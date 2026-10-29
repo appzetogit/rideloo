@@ -10,6 +10,3 @@ scratch/
 
 # Private server access notes - never commit
 SERVER_NOTES.md
-branch_structure.json
-temp_auto_push.bat
-temp_interactive_push.bat
