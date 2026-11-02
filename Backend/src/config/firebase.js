@@ -1,6 +1,8 @@
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getDatabase, ServerValue } from 'firebase-admin/database';
+import { getMessaging } from 'firebase-admin/messaging';
 import fs from 'node:fs';
 import path from 'node:path';
-import admin from 'firebase-admin';
 import { env } from './env.js';
 
 let firebaseDatabase = null;
@@ -53,8 +55,8 @@ const readServiceAccount = () => {
 };
 
 const getFirebaseApp = () => {
-  if (admin.apps.length > 0) {
-    return admin.apps[0];
+  if (getApps().length > 0) {
+    return getApps()[0];
   }
 
   const serviceAccount = readServiceAccount();
@@ -63,8 +65,8 @@ const getFirebaseApp = () => {
   }
 
   try {
-    return admin.initializeApp({
-      ...(serviceAccount ? { credential: admin.credential.cert(serviceAccount) } : {}),
+    return initializeApp({
+      ...(serviceAccount ? { credential: cert(serviceAccount) } : {}),
       ...(env.firebase.databaseURL ? { databaseURL: env.firebase.databaseURL } : {}),
     });
   } catch (error) {
@@ -90,7 +92,7 @@ export const getFirebaseDatabase = () => {
   }
 
   try {
-    firebaseDatabase = admin.database(app);
+    firebaseDatabase = getDatabase(app);
     return firebaseDatabase;
   } catch (error) {
     console.error('Firebase database initialization failed:', error.message);
@@ -109,7 +111,7 @@ export const getFirebaseMessaging = () => {
   }
 
   try {
-    firebaseMessaging = admin.messaging(app);
+    firebaseMessaging = getMessaging(app);
     return firebaseMessaging;
   } catch (error) {
     console.error('Firebase messaging initialization failed:', error.message);
@@ -117,4 +119,4 @@ export const getFirebaseMessaging = () => {
   }
 };
 
-export const firebaseServerTimestamp = () => admin.database.ServerValue.TIMESTAMP;
+export const firebaseServerTimestamp = () => ServerValue.TIMESTAMP;
