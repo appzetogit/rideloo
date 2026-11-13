@@ -248,6 +248,10 @@ export const applyDriverWalletAdjustment = async ({
   description = '',
   metadata = {},
   session = null,
+  // When set on a debit, the balance decrement is applied atomically only while
+  // the wallet still holds enough, so a purchase can be settled without a
+  // transaction (this deployment runs a standalone mongod, which rejects them).
+  requireSufficientFunds = false,
 }) => {
   const normalizedAmount = normalizeAmount(amount);
 
@@ -269,8 +273,13 @@ export const applyDriverWalletAdjustment = async ({
   const isBlockedAfter =
     !before.rules.isWalletEnabled || (balanceAfter < before.minimumBalanceForOrders && !covered);
 
-  const updatedDriver = await Driver.findByIdAndUpdate(
-    driverId,
+  const walletFilter = { _id: driverId };
+  if (requireSufficientFunds && normalizedAmount < 0) {
+    walletFilter['wallet.balance'] = { $gte: Math.abs(normalizedAmount) };
+  }
+
+  const updatedDriver = await Driver.findOneAndUpdate(
+    walletFilter,
     {
       $inc: { 'wallet.balance': normalizedAmount },
       $set: {
@@ -280,6 +289,13 @@ export const applyDriverWalletAdjustment = async ({
     },
     { returnDocument: 'after', session },
   );
+
+  // Only possible when requireSufficientFunds guarded the debit: the balance
+  // dropped below the amount between the snapshot above and this write. No
+  // wallet transaction is recorded because no money moved.
+  if (!updatedDriver) {
+    throw new ApiError(400, 'Not enough wallet balance');
+  }
 
   const [transaction] = await WalletTransaction.create(
     [
@@ -458,7 +474,7 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
     // exactly as before. Read here, before the snapshot is replaced below.
     const platformFee = Math.min(Math.max(0, Number(ride.pricingSnapshot?.rider_platform_fee) || 0), fare);
 
-    // A driver on a daily pass keeps the fare: the pass is what ZI CAB earned
+    // A driver on a daily pass keeps the fare: the pass is what Rideloo earned
     // from them today. The rider's platform fee is still not theirs, so it is
     // the one part that survives the waiver.
     //
