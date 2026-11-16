@@ -14,6 +14,7 @@ import {
   AdminBusCommissionManager,
   AdminBusServiceDetails,
   AdminBusServiceManager,
+  AdminCancellationReasons,
   AdminCareerApplications,
   AdminCMSBuilder,
   AdminLandingContent,
@@ -385,7 +386,6 @@ const adminRoutes = (
       <Route path="support/tickets" element={<AdminSupportTickets />} />
       <Route path="careers/jobs" element={<AdminJobPositions />} />
       <Route path="careers/applications" element={<AdminCareerApplications />} />
-      <Route path="*" element={<AdminSectionPlaceholder />} />
 
       <Route path="reports/user" element={<AdminUserReport />} />
       <Route path="reports/driver" element={<AdminDriverReport />} />
@@ -402,6 +402,8 @@ const adminRoutes = (
       <Route path="settings/business/general" element={<AdminGeneralSettings />} />
       <Route path="settings/business/customization" element={<AdminCustomizationSettings />} />
       <Route path="settings/business/transport-ride" element={<AdminTransportRideSettings />} />
+      <Route path="settings/cancellation-reasons" element={<AdminCancellationReasons />} />
+      <Route path="settings/business/cancellation-reasons" element={<AdminCancellationReasons />} />
       <Route path="settings/business/bid-ride" element={<AdminBidRideSettings />} />
       <Route path="settings/business/driver-subscription" element={<AdminDriverSubscriptionSettings />} />
 
@@ -431,6 +433,7 @@ const adminRoutes = (
       <Route path="settings/addons/dispatcher" element={<AdminDispatcherAddons />} />
       <Route path="settings/addons/*" element={<AdminReportPlaceholder title="Addons Management" />} />
       <Route path="settings/cms/*" element={<AdminReportPlaceholder title="CMS Management" />} />
+      <Route path="*" element={<AdminSectionPlaceholder />} />
     </Route>
 
     <Route path="*" element={<Navigate to="/" />} />

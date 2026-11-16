@@ -123,7 +123,8 @@ userRouter.post('/login', loginRateLimit, asyncHandler(loginUser));
 userRouter.post('/profile-image', asyncHandler(uploadUserProfileImage));
 userRouter.post('/auth/send-otp', otpSendRateLimit, asyncHandler(startUserOtpRequest));
 userRouter.post('/auth/verify-otp', otpVerifyRateLimit, asyncHandler(verifyUserOtpRequest));
-userRouter.post('/otp-login', otpVerifyRateLimit, asyncHandler(verifyUserPhoneForOtpLogin));
+// No /otp-login: it issued a session for a bare phone number, with no OTP.
+// Sessions come only from /auth/verify-otp and /login.
 userRouter.post('/fcm-token', authenticate(['user']), asyncHandler(saveUserFcmToken));
 
 // Public: booking enquiry from the marketing site. Rate limited because it
@@ -147,7 +148,8 @@ userRouter.put('/emergency-contacts', authenticate(['user']), saveMyEmergencyCon
 // The app's API client sends PATCH.
 userRouter.patch('/emergency-contacts', authenticate(['user']), saveMyEmergencyContacts);
 userRouter.get('/wallet', authenticate(['user']), asyncHandler(getUserWallet));
-userRouter.post('/wallet/topup', authenticate(['user']), asyncHandler(topupUserWallet));
+// No /wallet/topup: it credited any amount with no payment. Top-ups go through
+// the Razorpay and PhonePe routes, which verify the payment first.
 userRouter.post('/wallet/transfer', authenticate(['user']), asyncHandler(transferUserWallet));
 userRouter.post('/wallet/transfer/driver', authenticate(['user']), asyncHandler(transferUserWalletToDriver));
 userRouter.post('/wallet/razorpay/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createRazorpayWalletTopupOrder));

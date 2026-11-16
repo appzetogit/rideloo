@@ -49,7 +49,7 @@ const Corporate = () => {
           <div className="corp-info">
             <h2 className="section-title">{corporatePage.benefitsHeading}</h2>
             <p className="body-text">
-              Managing corporate travel expenses and ensuring employee safety can be challenging. ZI CAB simplifies B2B travel with automated booking tools, zero surge pricing, and customized billing contracts.
+              Managing corporate travel expenses and ensuring employee safety can be challenging. Rideloo simplifies B2B travel with automated booking tools, zero surge pricing, and customized billing contracts.
             </p>
 
             <div className="benefits-column">

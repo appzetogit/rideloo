@@ -40,7 +40,7 @@ const FEATURE_META = {
   '/cab-sharing': {
     icon: <Bus size={48} strokeWidth={1.5} />,
     title: 'Cab Sharing',
-    subtitle: 'Share rides, save big — Appzeto 24\'s USP',
+    subtitle: 'Share rides, save big — Rideloo\'s USP',
     description: 'Real-time seat booking in shared cabs. Choose your seat, split the fare, and travel smart.',
     color: 'bg-green-50',
     accent: 'text-green-600',
@@ -134,7 +134,7 @@ const ComingSoon = () => {
           >
             <img
               src="https://ui.aceternity.com/_next/image?url=%2Flinear.webp&w=3840&q=75"
-              alt="Appzeto  launch preview"
+              alt="Rideloo  launch preview"
               className="mx-auto rounded-xl object-cover h-full object-left-top w-full"
               draggable={false}
             />

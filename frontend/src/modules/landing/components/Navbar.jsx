@@ -152,17 +152,17 @@ const Navbar = ({ activeTab, setActiveTab, openBookingModal }) => {
           .logo-zi {
             font-size: 30px;
             font-weight: 800;
-            color: #FFFFFF;
+            color: #F7891F;
             font-style: italic;
             letter-spacing: -0.5px;
           }
 
           .logo-cab {
-            font-size: 26px;
+            font-size: 30px;
             font-weight: 800;
-            color: #00BBA9;
-            margin-left: 4px;
-            letter-spacing: 1px;
+            color: #3BA4F0;
+            font-style: italic;
+            letter-spacing: -0.5px;
           }
 
           .logo-tagline {

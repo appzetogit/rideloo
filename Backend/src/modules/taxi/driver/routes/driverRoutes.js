@@ -129,8 +129,11 @@ import { triggerDriverSosAlert } from '../../safety/controllers/safetyController
 import { listActiveSurges } from '../../services/surgeService.js';
 import { Driver } from '../models/Driver.js';
 import { getOpportunityMap } from '../../services/opportunityMapService.js';
+import { getPublicCancellationReasons } from '../../admin/controllers/cancellationReasonController.js';
 
 export const driverRouter = Router();
+
+driverRouter.get('/cancellation-reasons', getPublicCancellationReasons);
 
 driverRouter.post("/register", asyncHandler(registerDriver));
 driverRouter.post("/login", loginRateLimit, asyncHandler(loginDriver));
@@ -341,11 +344,8 @@ driverRouter.post(
   authenticate(["driver"]),
   asyncHandler(claimDriverIncentiveReward),
 );
-driverRouter.post(
-  "/wallet/top-up",
-  authenticate(["driver"]),
-  asyncHandler(topUpMyWallet),
-);
+// No bare /wallet/top-up: it credited any amount with no payment. Drivers top
+// up through the Razorpay and PhonePe routes below, which verify the payment.
 driverRouter.post(
   "/wallet/top-up/razorpay/callback",
   asyncHandler(handleDriverRazorpayWalletTopupCallback),

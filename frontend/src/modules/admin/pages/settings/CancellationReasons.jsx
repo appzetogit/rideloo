@@ -15,13 +15,13 @@ const StatusToggle = ({ active, onToggle }) => (
       e.stopPropagation();
       onToggle();
     }}
-    className={`w-12 h-6.5 rounded-full transition-colors relative flex items-center px-1 ${
+    className={`w-12 h-6 rounded-full transition-all duration-300 relative ${
       active ? 'bg-yellow-400' : 'bg-gray-300'
     }`}
   >
     <div
-      className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
-        active ? 'translate-x-5.5' : 'translate-x-0'
+      className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-300 ${
+        active ? 'right-1' : 'left-1'
       }`}
     />
   </button>
@@ -54,7 +54,13 @@ const CancellationReasons = () => {
     try {
       setLoading(true);
       const res = await adminService.getCancellationReasons({});
-      const data = res.data?.data?.results || res.data?.results || [];
+      const data =
+        (Array.isArray(res?.data?.results) && res.data.results) ||
+        (Array.isArray(res?.data?.data?.results) && res.data.data.results) ||
+        (Array.isArray(res?.results) && res.results) ||
+        (Array.isArray(res?.data) && res.data) ||
+        (Array.isArray(res) && res) ||
+        [];
       setReasons(data);
     } catch {
       toast.error('Failed to load cancellation reasons');
@@ -72,7 +78,7 @@ const CancellationReasons = () => {
     return reasons
       .filter((r) => (r.audience || 'user') === audience)
       .filter((r) => (term ? (r.title || '').toLowerCase().includes(term) : true))
-      .sort((a, b) => (a.order_by || 0) - (b.order_by || 0));
+      .sort((a, b) => (Number(a.order_by) || 0) - (Number(b.order_by) || 0));
   }, [reasons, audience, searchTerm]);
 
   const openCreate = () => {
@@ -90,7 +96,7 @@ const CancellationReasons = () => {
       title: reason.title || '',
       audience: reason.audience || 'user',
       order_by: String(reason.order_by ?? ''),
-      requiresNote: Boolean(reason.requiresNote),
+      requiresNote: Boolean(reason.requiresNote || reason.requires_note),
       active: reason.active !== false,
     });
     setEditing(reason);
@@ -113,8 +119,9 @@ const CancellationReasons = () => {
         active: formData.active,
       };
 
-      if (editing?.id) {
-        await adminService.updateCancellationReason(editing.id, payload);
+      const reasonId = editing?.id || editing?._id;
+      if (reasonId) {
+        await adminService.updateCancellationReason(reasonId, payload);
         toast.success('Cancellation reason updated');
       } else {
         await adminService.createCancellationReason(payload);
@@ -131,13 +138,14 @@ const CancellationReasons = () => {
   };
 
   const handleToggleActive = async (reason) => {
+    const reasonId = reason.id || reason._id;
     // Optimistic so the switch feels instant; reverted by the refetch on error.
     setReasons((prev) =>
-      prev.map((r) => (r.id === reason.id ? { ...r, active: !r.active } : r)),
+      prev.map((r) => ((r.id || r._id) === reasonId ? { ...r, active: !r.active } : r)),
     );
 
     try {
-      await adminService.updateCancellationReason(reason.id, { active: !reason.active });
+      await adminService.updateCancellationReason(reasonId, { active: !reason.active });
     } catch {
       toast.error('Could not update the reason');
       fetchReasons();
@@ -145,12 +153,13 @@ const CancellationReasons = () => {
   };
 
   const handleDelete = async (reason) => {
+    const reasonId = reason.id || reason._id;
     if (!window.confirm(`Delete “${reason.title}”?\n\nRides already cancelled with this reason keep their recorded text.`)) {
       return;
     }
 
     try {
-      await adminService.deleteCancellationReason(reason.id);
+      await adminService.deleteCancellationReason(reasonId);
       toast.success('Cancellation reason deleted');
       await fetchReasons();
     } catch {
@@ -225,11 +234,11 @@ const CancellationReasons = () => {
             </thead>
             <tbody>
               {visibleReasons.map((reason) => (
-                <tr key={reason.id} className="border-t border-gray-100 hover:bg-gray-50/60">
+                <tr key={reason.id || reason._id} className="border-t border-gray-100 hover:bg-gray-50/60">
                   <td className="px-5 py-3.5 text-gray-500">{reason.order_by ?? 0}</td>
                   <td className="px-5 py-3.5 font-medium text-gray-900">{reason.title}</td>
                   <td className="px-5 py-3.5 text-gray-500">
-                    {reason.requiresNote ? 'Yes' : '—'}
+                    {reason.requiresNote || reason.requires_note ? 'Yes' : '—'}
                   </td>
                   <td className="px-5 py-3.5">
                     <StatusToggle active={reason.active !== false} onToggle={() => handleToggleActive(reason)} />
@@ -279,7 +288,7 @@ const CancellationReasons = () => {
             >
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-bold text-gray-900">
-                  {editing?.id ? 'Edit Reason' : 'Add Reason'}
+                  {editing?.id || editing?._id ? 'Edit Reason' : 'Add Reason'}
                 </h2>
                 <button
                   type="button"

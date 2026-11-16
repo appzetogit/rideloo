@@ -160,7 +160,7 @@ const subscriptionRows = async ({ from, to, onlyId }) => {
       reference: row.paymentReference || '',
       detail: viaGateway ? `Paid online via ${titleCase(method)}` : "Paid from the driver's wallet",
       payer: person(row.driverId, 'driver'),
-      payee: { id: '', name: 'ZI CAB', phone: '', role: 'platform' },
+      payee: { id: '', name: 'Rideloo', phone: '', role: 'platform' },
       description: row.planName || row.name || 'Subscription pass',
       vehicle_type_ids: driverVehicleTypeIds(row.driverId),
     };
@@ -186,7 +186,7 @@ const driverTopUpRows = async ({ from, to, onlyId }) => {
       reference: row.metadata?.providerPaymentId || row.metadata?.providerOrderId || '',
       detail: `Wallet top-up via ${titleCase(provider)}`,
       payer: person(row.driverId, 'driver'),
-      payee: { id: '', name: 'ZI CAB', phone: '', role: 'platform' },
+      payee: { id: '', name: 'Rideloo', phone: '', role: 'platform' },
       description: row.description || 'Driver wallet top-up',
       vehicle_type_ids: driverVehicleTypeIds(row.driverId),
     };
@@ -226,7 +226,7 @@ const riderTopUpRows = async ({ from, to, onlyId }) => {
       reference: tx.providerPaymentId || tx.providerOrderId || '',
       detail: `Wallet refill via ${titleCase(provider)}`,
       payer: person(userById.get(String(userId)), 'rider'),
-      payee: { id: '', name: 'ZI CAB', phone: '', role: 'platform' },
+      payee: { id: '', name: 'Rideloo', phone: '', role: 'platform' },
       description: tx.title || 'Wallet refill',
       vehicle_type_ids: [],
     };

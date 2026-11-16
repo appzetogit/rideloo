@@ -21,7 +21,7 @@ const legalContent = {
     title: 'Terms & Conditions',
     icon: ScrollText,
     intro:
-      'These terms apply to everyone who uses ZI CAB - riders booking rides and parcel deliveries, and drivers and vehicle owners providing them.',
+      'These terms apply to everyone who uses Rideloo - riders booking rides and parcel deliveries, and drivers and vehicle owners providing them.',
     rawText: termsRawText,
   },
   privacy: {
@@ -29,7 +29,7 @@ const legalContent = {
     title: 'Privacy Policy',
     icon: ShieldCheck,
     intro:
-      'How ZI CAB collects, uses, shares, stores and protects the information of riders, drivers and website visitors.',
+      'How Rideloo collects, uses, shares, stores and protects the information of riders, drivers and website visitors.',
     rawText: privacyRawText,
   },
   refund: {

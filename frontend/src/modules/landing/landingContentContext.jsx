@@ -15,11 +15,14 @@ import { useSettings } from '../../shared/context/SettingsContext';
 
 const LandingContentContext = createContext(null);
 
-const DEFAULT_WA_MESSAGE = "Hi ZI CAB, I'd like to book a ride.";
+const DEFAULT_WA_MESSAGE = "Hi Rideloo, I'd like to book a ride.";
 
 /// The file the CMS brand block shipped with. An untouched field still holds
 /// it, so it counts as "not set" rather than as a deliberate choice.
-const BUNDLED_LOGO = '/zicab-logo.jpg';
+const BUNDLED_LOGO = '/rideloo-icon.png';
+// The ZI CAB file the brand block shipped with before the rename. A record
+// still holding it was never set by anyone either.
+const LEGACY_BUNDLED_LOGOS = ['/zicab-logo.jpg'];
 
 /// The logo the site shows: one set in Website Content if anyone has set one
 /// there, otherwise the logo from General Settings, otherwise the bundled file.
@@ -30,7 +33,7 @@ const BUNDLED_LOGO = '/zicab-logo.jpg';
 /// Either upload now works; the page-specific one wins when both are set.
 const resolveLogo = (brandLogo, generalLogo) => {
   const override = String(brandLogo || '').trim();
-  if (override && override !== BUNDLED_LOGO) {
+  if (override && override !== BUNDLED_LOGO && !LEGACY_BUNDLED_LOGOS.includes(override)) {
     return override;
   }
   return generalLogo || BUNDLED_LOGO;

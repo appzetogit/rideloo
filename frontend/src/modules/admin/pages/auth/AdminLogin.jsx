@@ -45,7 +45,7 @@ const AdminLogin = () => {
   const navigate = useNavigate();
 
   const appLogo = settings.general?.logo || settings.customization?.logo;
-  const appName = settings.general?.app_name || 'ZI CAB';
+  const appName = settings.general?.app_name || 'Rideloo';
 
   const switchView = (next) => {
     setError('');

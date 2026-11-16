@@ -64,7 +64,7 @@ const VerifyOTP = () => {
   const [showPermissions, setShowPermissions] = useState(false);
   const [permissionStep, setPermissionStep] = useState('location');
 
-  const appName = settings.general?.app_name || 'Appzeto 24';
+  const appName = settings.general?.app_name || 'Rideloo';
   const appLogo = settings.general?.logo || settings.customization?.logo || settings.general?.favicon || '';
 
   useEffect(() => {

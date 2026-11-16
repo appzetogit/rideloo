@@ -1221,7 +1221,7 @@ const SupportChatPanel = ({
               <div className="w-16 h-16 rounded-[22px] bg-[#FFC400]/10 border border-[#FFC400]/20 flex items-center justify-center text-[#0B1220] mb-5">
                 <LifeBuoy size={28} className="stroke-[2.5]" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 font-poppins">Welcome to Appzeto  Support Center</h3>
+              <h3 className="text-base font-bold text-slate-900 font-poppins">Welcome to Rideloo  Support Center</h3>
               <p className="text-xs text-slate-450 mt-2 max-w-sm leading-relaxed font-medium">
                 Manage all conversations between Users, Drivers, Vendors, and Administrators from one single dashboard workspace.
               </p>

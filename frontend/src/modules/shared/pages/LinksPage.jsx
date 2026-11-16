@@ -35,7 +35,7 @@ const LinksPage = () => {
   const links = [
     {
       id: 'user',
-      title: 'Appzeto 24 - User app',
+      title: 'Rideloo - User app',
       subtitle: 'Book rides, send parcels, and more.',
       description: 'Get where you need to go with ease. Request a ride or send packages across the city in minutes.',
       url: 'https://play.google.com/store/apps/details?id=com.Appzeto 24.user',
@@ -45,8 +45,8 @@ const LinksPage = () => {
     },
     {
       id: 'driver',
-      title: 'Appzeto 24 Driver',
-      subtitle: 'Drive and earn with Appzeto 24.',
+      title: 'Rideloo Driver',
+      subtitle: 'Drive and earn with Rideloo.',
       description: 'Join our fleet of professional drivers. Flexible hours, great earnings, and a supportive community.',
       url: 'https://play.google.com/store/apps/details?id=com.Appzeto 24.driver',
       type: 'Partner App',
@@ -59,20 +59,20 @@ const LinksPage = () => {
       <nav className="links-nav">
         <div className="nav-container">
           <a href="/" className="nav-logo">
-            <span className="logo-Appzeto ">Appzeto </span><span className="logo-24">24</span>
+            <span className="logo-Appzeto ">Rideloo</span>
           </a>
           <a href="/" className="back-home">Back to Home</a>
         </div>
       </nav>
 
       <div className="links-banner">
-        <img src={bannerImg} alt="Appzeto 24 Banner" className="banner-image" />
+        <img src={bannerImg} alt="Rideloo Banner" className="banner-image" />
         <div className="banner-gradient"></div>
       </div>
 
       <div className="links-content-wrapper">
         <header className="links-header">
-          <h1 className="links-title">Download <span className="highlight">Appzeto 24</span></h1>
+          <h1 className="links-title">Download <span className="highlight">Rideloo</span></h1>
           <p className="links-tagline">Choose the app that's right for you and start your journey today.</p>
         </header>
 
@@ -128,7 +128,7 @@ const LinksPage = () => {
               </div>
               <div className="social-card-info">
                 <span className="social-name">Facebook</span>
-                <span className="social-handle">Appzeto 24</span>
+                <span className="social-handle">Rideloo</span>
               </div>
               <ExternalLink size={16} className="social-ext" />
             </a>
@@ -176,7 +176,7 @@ const LinksPage = () => {
               </div>
               <div className="social-card-info">
                 <span className="social-name">LinkedIn</span>
-                <span className="social-handle">Appzeto 24</span>
+                <span className="social-handle">Rideloo</span>
               </div>
               <ExternalLink size={16} className="social-ext" />
             </a>
@@ -191,7 +191,7 @@ const LinksPage = () => {
                 <h2 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight leading-none text-center">
                   Quick Access to All <br />
                   <span className="text-3xl md:text-5xl font-black text-[#FFB300] mt-2 block leading-none">
-                    Appzeto 24 Platforms
+                    Rideloo Platforms
                   </span>
                 </h2>
               </div>
@@ -199,7 +199,7 @@ const LinksPage = () => {
           >
             <img
               src="https://ui.aceternity.com/_next/image?url=%2Flinear.webp&w=3840&q=75"
-              alt="Appzeto  platforms overview"
+              alt="Rideloo  platforms overview"
               className="mx-auto rounded-2xl object-cover h-full object-left-top w-full"
               draggable={false}
             />

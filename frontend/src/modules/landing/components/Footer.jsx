@@ -70,7 +70,7 @@ const Footer = ({ setActiveTab }) => {
               <li><button onClick={() => handleNavClick('corporate')}>Corporate Travel</button></li>
               <li><button onClick={() => handleNavClick('partner')}>Partner With Us</button></li>
               <li><button onClick={() => handleNavClick('driver')}>Attach Driver/Cab</button></li>
-              <li><button onClick={() => handleNavClick('advertise')}>Advertise with ZI CAB</button></li>
+              <li><button onClick={() => handleNavClick('advertise')}>Advertise with Rideloo</button></li>
               <li><button onClick={() => handleNavClick('contact')}>Contact Us</button></li>
             </ul>
           </div>
@@ -144,7 +144,7 @@ const Footer = ({ setActiveTab }) => {
             <a href="/refund">Refund & Cancellation</a>
             <span>•</span>
             {/* Required credit for the Creative Commons vehicle photos.
-                Safe to delete once they are replaced with ZI CAB's own fleet photos. */}
+                Safe to delete once they are replaced with Rideloo's own fleet photos. */}
             <a href="/vehicles/ATTRIBUTION.md" target="_blank" rel="noreferrer">Photo Credits</a>
           </div>
         </div>
@@ -221,15 +221,15 @@ const Footer = ({ setActiveTab }) => {
           .footer-logo .logo-zi {
             font-size: 28px;
             font-weight: 800;
-            color: #FFFFFF;
+            color: #F7891F;
             font-style: italic;
           }
 
           .footer-logo .logo-cab {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 800;
-            color: #00BBA9;
-            margin-left: 4px;
+            color: #3BA4F0;
+            font-style: italic;
           }
 
           .footer-tagline {

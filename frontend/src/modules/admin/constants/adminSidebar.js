@@ -242,6 +242,7 @@ export const ADMIN_SIDEBAR_SECTIONS = [
           { label: 'General Settings', path: '/admin/settings/business/general', permission: 'settings.view' },
           { label: 'Customization Settings', path: '/admin/settings/business/customization', permission: 'settings.view' },
           { label: 'Transport Ride Settings', path: '/admin/settings/business/transport-ride', permission: 'settings.view' },
+          { label: 'Cancellation Reasons', path: '/admin/settings/cancellation-reasons', permission: 'settings.view' },
         ],
       },
       {

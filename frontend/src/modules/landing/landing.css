@@ -1,4 +1,4 @@
-/* ZI CAB landing styles.
+/* Rideloo landing styles.
 
    Everything below is nested under `.zicab-landing` so it cannot reach the taxi
    app: both sides use generic class names (`container`, `btn`, `section-title`)
@@ -87,7 +87,7 @@
 }
 
 .zicab-landing {
-  /* ZI CAB Custom CSS Design System */
+  /* Rideloo Custom CSS Design System */
 
 
   /* Display type: tighter tracking and optical sizing at large sizes. Default

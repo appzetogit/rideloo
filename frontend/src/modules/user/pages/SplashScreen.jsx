@@ -187,7 +187,7 @@ const SplashScreen = () => {
         >
           {/* Clean text logo */}
           <h1 className="text-[32px] font-[900] tracking-wider text-white mb-2 leading-none uppercase">
-            Appzeto
+            Rideloo
           </h1>
 
           {/* Subtitle */}

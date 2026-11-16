@@ -19,6 +19,37 @@ const ok = (res, data, extra = {}) => res.json({ success: true, data, ...extra }
 
 const AUDIENCES = ['user', 'driver'];
 
+export const DEFAULT_CANCELLATION_REASONS = [
+  // User (Rider) Cancellation Reasons
+  { title: 'Driver asked to cancel', audience: 'user', order_by: 1, requiresNote: false, active: true },
+  { title: 'Driver is taking too long to arrive', audience: 'user', order_by: 2, requiresNote: false, active: true },
+  { title: 'Driver is not moving / wrong direction', audience: 'user', order_by: 3, requiresNote: false, active: true },
+  { title: 'Wrong pickup location entered', audience: 'user', order_by: 4, requiresNote: false, active: true },
+  { title: 'Change of plans / Booked by mistake', audience: 'user', order_by: 5, requiresNote: false, active: true },
+  { title: 'Driver asked for extra cash / offline trip', audience: 'user', order_by: 6, requiresNote: false, active: true },
+  { title: 'Other reason', audience: 'user', order_by: 7, requiresNote: true, active: true },
+
+  // Driver Cancellation Reasons
+  { title: 'Rider did not show up', audience: 'driver', order_by: 1, requiresNote: false, active: true },
+  { title: 'Unable to contact rider', audience: 'driver', order_by: 2, requiresNote: false, active: true },
+  { title: 'Rider requested cancellation', audience: 'driver', order_by: 3, requiresNote: false, active: true },
+  { title: 'Too much luggage / Extra passengers', audience: 'driver', order_by: 4, requiresNote: false, active: true },
+  { title: 'Pickup area is unsafe or blocked', audience: 'driver', order_by: 5, requiresNote: false, active: true },
+  { title: 'Vehicle breakdown or technical issue', audience: 'driver', order_by: 6, requiresNote: false, active: true },
+  { title: 'Other reason', audience: 'driver', order_by: 7, requiresNote: true, active: true },
+];
+
+export const seedDefaultReasonsIfEmpty = async () => {
+  try {
+    const count = await CancellationReason.countDocuments();
+    if (count === 0) {
+      await CancellationReason.insertMany(DEFAULT_CANCELLATION_REASONS);
+    }
+  } catch (err) {
+    console.error('Failed to auto-seed cancellation reasons:', err?.message || err);
+  }
+};
+
 const normalizeAudience = (value, fallback = 'user') => {
   const audience = String(value || '').trim().toLowerCase();
   return AUDIENCES.includes(audience) ? audience : fallback;
@@ -42,6 +73,8 @@ const present = (reason) => ({
 export const getPublicCancellationReasons = asyncHandler(async (req, res) => {
   const audience = normalizeAudience(req.query.audience);
 
+  await seedDefaultReasonsIfEmpty();
+
   const reasons = await CancellationReason.find({ audience, active: true })
     .sort({ order_by: 1, createdAt: 1 })
     .lean();
@@ -50,6 +83,8 @@ export const getPublicCancellationReasons = asyncHandler(async (req, res) => {
 });
 
 export const listCancellationReasons = asyncHandler(async (req, res) => {
+  await seedDefaultReasonsIfEmpty();
+
   const query = {};
   if (req.query.audience) query.audience = normalizeAudience(req.query.audience);
 

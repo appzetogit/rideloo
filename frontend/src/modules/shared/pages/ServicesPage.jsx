@@ -79,7 +79,7 @@ const ServicesPage = () => {
               <div className="aspect-[16/10] w-full rounded-2xl overflow-hidden bg-slate-900">
                 <img
                   src={servicesHeroImg}
-                  alt="Appzeto 24 Premium Transport Services"
+                  alt="Rideloo Premium Transport Services"
                   className="w-full h-full object-cover opacity-95"
                 />
               </div>
@@ -132,7 +132,7 @@ const ServicesPage = () => {
         >
           <img
             src="https://ui.aceternity.com/_next/image?url=%2Flinear.webp&w=3840&q=75"
-            alt="Appzeto  premium services dashboard"
+            alt="Rideloo  premium services dashboard"
             className="mx-auto rounded-2xl object-cover h-full object-left-top w-full"
             draggable={false}
           />

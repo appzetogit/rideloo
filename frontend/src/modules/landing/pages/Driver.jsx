@@ -39,7 +39,7 @@ const Driver = () => {
           <span className="page-tag">{driverPage.tag}</span>
           <h1 className="page-title">{driverPage.title}</h1>
           <p className="page-subtitle">
-            Become a ZI CAB Driver Partner. Enjoy daily/weekly settlements, zero arbitrary account blocks, and dedicated support for captains.
+            Become a Rideloo Driver Partner. Enjoy daily/weekly settlements, zero arbitrary account blocks, and dedicated support for captains.
           </p>
         </div>
       </div>

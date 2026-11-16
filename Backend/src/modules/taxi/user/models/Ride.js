@@ -413,7 +413,7 @@ const rideSchema = new mongoose.Schema(
     // settlement treats them identically (cash-like). This field only records
     // the tender type for reporting; it does not change commission handling.
     // 'online' is a rider who paid the fare in the app (Razorpay): the money
-    // reached ZI CAB, which credits the driver's wallet.
+    // reached Rideloo, which credits the driver's wallet.
     collectedVia: {
       type: String,
       enum: ['cash', 'upi', 'online'],

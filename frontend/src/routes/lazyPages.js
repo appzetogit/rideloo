@@ -239,6 +239,7 @@ export const AdminGlobalSettings = lazy(() => import('../modules/admin/pages/set
 export const AdminGeneralSettings = lazy(() => import('../modules/admin/pages/settings/GeneralSettings'));
 export const AdminCustomizationSettings = lazy(() => import('../modules/admin/pages/settings/CustomizationSettings'));
 export const AdminTransportRideSettings = lazy(() => import('../modules/admin/pages/settings/TransportRideSettings'));
+export const AdminCancellationReasons = lazy(() => import('../modules/admin/pages/settings/CancellationReasons'));
 export const AdminBidRideSettings = lazy(() => import('../modules/admin/pages/settings/BidRideSettings'));
 export const AdminDriverSubscriptionSettings = lazy(() => import('../modules/admin/pages/settings/DriverSubscriptionSettings'));
 export const AdminWalletSettings = lazy(() => import('../modules/admin/pages/settings/WalletSettings'));

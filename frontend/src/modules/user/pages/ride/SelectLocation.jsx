@@ -1495,7 +1495,7 @@ const SelectLocation = () => {
            )}
            {/* Overlay overlaying the map with branding */}
            <div className="absolute top-6 right-6 bg-white/90 backdrop-blur px-4 py-2 rounded-2xl shadow-lg border border-slate-100 font-black text-[#FFC400] text-[18px] tracking-tight flex items-center gap-2">
-             <MapPin className="text-[#FFC400]" size={20} fill="currentColor" /> Appzeto
+             <MapPin className="text-[#FFC400]" size={20} fill="currentColor" /> Rideloo
            </div>
         </div>
       </div>

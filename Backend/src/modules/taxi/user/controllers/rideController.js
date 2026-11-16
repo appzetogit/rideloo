@@ -798,7 +798,7 @@ export const payRideCompletionWithWallet = async (req, res) => {
  * opens it. Open from when the driver is assigned until the fare is paid,
  * before or after the trip is completed.
  *
- * The money reaches ZI CAB, so the driver's wallet is credited the full fare
+ * The money reaches Rideloo, so the driver's wallet is credited the full fare
  * the moment it is verified. The ride stays a cash ride for settlement: the
  * commission (or a pass's waiver) is taken exactly as if the driver had been
  * handed the cash, so the driver nets the same whichever way the rider paid

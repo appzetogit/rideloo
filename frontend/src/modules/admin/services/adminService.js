@@ -383,4 +383,12 @@ export const adminService = {
   createOnboardingScreen: (payload) => api.post('/on-boarding', payload),
   updateOnboardingScreen: (id, payload) => api.patch(`/on-boarding/${id}`, payload),
   deleteOnboardingScreen: (id) => api.delete(`/on-boarding/${id}`),
+
+  /**
+   * Cancellation Reasons Management
+   */
+  getCancellationReasons: (params = {}) => api.get('/admin/cancellation-reasons', { params }),
+  createCancellationReason: (payload) => api.post('/admin/cancellation-reasons', payload),
+  updateCancellationReason: (id, payload) => api.patch(`/admin/cancellation-reasons/${id}`, payload),
+  deleteCancellationReason: (id) => api.delete(`/admin/cancellation-reasons/${id}`),
 };

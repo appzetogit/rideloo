@@ -7,7 +7,7 @@ import mobilityBanner from '@/assets/images/mobility-banner-cartoony.png';
 
 const AuthLayout = ({ children, title, subtitle }) => {
   const { settings } = useSettings();
-  const appName = settings.general?.app_name || 'Appzeto 24';
+  const appName = settings.general?.app_name || 'Rideloo';
   const appLogo = settings.general?.logo || settings.customization?.logo || settings.general?.favicon || '';
 
   return (
