@@ -1,6 +1,6 @@
 import {
   Briefcase,
-  Bus,
+  // Bus,
   Car,
   Clock,
   FileText,
@@ -102,6 +102,7 @@ export const ADMIN_SIDEBAR_SECTIONS = [
           { label: 'Package Pricing', path: '/admin/pricing/package-pricing', permission: 'rental.view' },
         ],
       },
+      /*
       {
         icon: Bus,
         label: 'Bus Service',
@@ -123,6 +124,7 @@ export const ADMIN_SIDEBAR_SECTIONS = [
           { label: 'Pooling Bookings', path: '/admin/pooling/bookings', permission: 'pooling.view' },
         ],
       },
+      */
       {
         icon: MapPin,
         label: 'Geofencing',
@@ -192,7 +194,7 @@ export const ADMIN_SIDEBAR_SECTIONS = [
           { label: 'Add Employee', path: '/admin/employees/create', permission: 'employees.view' },
         ],
       },
-      { icon: Briefcase, label: 'Owner Management', path: '/admin/owners/dashboard', permission: 'owners.view' },
+      // { icon: Briefcase, label: 'Owner Management', path: '/admin/owners/dashboard', permission: 'owners.view' },
       {
         icon: FileText,
         label: 'Report',
