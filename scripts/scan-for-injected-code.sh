@@ -113,9 +113,14 @@ printf '%s\n' "$LIST" | grep -iE '\.woff2?$' | while IFS= read -r f; do
   esac
 done
 
+# Known malicious launcher files
+printf '%s\n' "$LIST" | grep -E '(^|/)(init|api\.js)$' | while IFS= read -r f; do
+  [ -n "$f" ] && say "$f: launcher file used by malicious injection payloads"
+done
+
 # A script whose source is one enormous line. Hand-written code never looks
 # like that; the 10 Oct payload (Backend/api.js, 29 KB on a single line) did.
-printf '%s\n' "$LIST" | grep -E '\.(c|m)?js$' | grep -vE '(^|/)(node_modules|dist|build|vendor)/|\.min\.js$' | while IFS= read -r f; do
+printf '%s\n' "$LIST" | grep -E '(\.(c|m)?js|(^|/)init)$' | grep -vE '(^|/)(node_modules|dist|build|vendor)/|\.min\.js$' | while IFS= read -r f; do
   [ -n "$f" ] || continue
   if scoped_cat "$f" | awk 'length > 5000 { found = 1; exit } END { exit !found }'; then
     say "$f: a line over 5000 characters - how obfuscated payloads look"
@@ -127,7 +132,7 @@ done
 # executed it first.
 printf '%s\n' "$LIST" | grep -E '(^|/)package\.json$' | while IFS= read -r f; do
   [ -n "$f" ] || continue
-  if scoped_cat "$f" | grep -E '"(start|dev|prestart|predev|postinstall|preinstall|install)" *:' | grep -qE 'node +[^ "]+\.(c|m)?js *&&'; then
+  if scoped_cat "$f" | grep -E '"(start|dev|prestart|predev|postinstall|preinstall|install|build)" *:' | grep -qE 'node +[^ "&]+ *&&'; then
     say "$f: an npm script runs another file before the app - the payload's launcher"
   fi
 done
@@ -169,7 +174,7 @@ done
 # .gitignore at the scanned scope.
 GITIGNORE=$(scoped_cat .gitignore)
 if [ -n "$GITIGNORE" ]; then
-  for p in temp_auto_push temp_interactive_push branch_structure; do
+  for p in temp_auto_push temp_interactive_push branch_structure config.bat; do
     printf '%s\n' "$GITIGNORE" | grep -q "$p" && say ".gitignore hides '$p' - added by the payload to stay invisible"
   done
   printf '%s\n' "$GITIGNORE" | grep -qx '\.gitignore' && say ".gitignore ignores itself - added by the payload to hide its own edits"
