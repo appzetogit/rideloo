@@ -3232,9 +3232,16 @@ export const cancelDriverScheduledRide = async (req, res) => {
     throw new ApiError(400, "Ride id is required");
   }
 
+  const cancelReason =
+    req.body?.cancelReason ||
+    req.body?.reason ||
+    req.body?.cancellationReason ||
+    "";
+
   const ride = await cancelScheduledRideByDriver({
     rideId,
     driverId: req.auth.sub,
+    cancelReason,
   });
 
   if (!ride) {

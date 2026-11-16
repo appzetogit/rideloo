@@ -1278,9 +1278,16 @@ export const getRideAppTipSettings = async (_req, res) => {
 };
 
 export const cancelRide = async (req, res) => {
+  const cancelReason =
+    req.body?.cancelReason ||
+    req.body?.reason ||
+    req.body?.cancellationReason ||
+    '';
+
   const ride = await cancelRideByUser({
     rideId: req.params.rideId,
     userId: req.auth.sub,
+    cancelReason,
   });
 
   if (!ride) {

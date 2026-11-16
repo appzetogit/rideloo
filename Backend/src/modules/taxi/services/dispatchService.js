@@ -1016,7 +1016,7 @@ export const cancelRideByAdmin = async (rideId) => {
   return ride;
 };
 
-export const cancelRideByUser = async ({ rideId, userId }) => {
+export const cancelRideByUser = async ({ rideId, userId, cancelReason = '' }) => {
   const dispatchState = getDispatchState(rideId);
   stopDispatchFlow(rideId, { releaseLease: false });
 
@@ -1050,6 +1050,9 @@ export const cancelRideByUser = async ({ rideId, userId }) => {
   const cancelUpdate = {
     status: RIDE_STATUS.CANCELLED,
     liveStatus: RIDE_LIVE_STATUS.CANCELLED,
+    cancelledBy: 'user',
+    cancelReason: String(cancelReason || '').trim(),
+    cancelledAt: new Date(),
   };
   if (existing.bookingMode === 'bidding') {
     cancelUpdate.biddingStatus = 'cancelled';
@@ -1157,7 +1160,7 @@ export const cancelRideByUser = async ({ rideId, userId }) => {
   return ride;
 };
 
-export const cancelScheduledRideByDriver = async ({ rideId, driverId }) => {
+export const cancelScheduledRideByDriver = async ({ rideId, driverId, cancelReason = '' }) => {
   const dispatchState = getDispatchState(rideId);
   stopDispatchFlow(rideId, { releaseLease: false });
 
@@ -1200,6 +1203,9 @@ export const cancelScheduledRideByDriver = async ({ rideId, driverId }) => {
   const cancelUpdate = {
     status: RIDE_STATUS.CANCELLED,
     liveStatus: RIDE_LIVE_STATUS.CANCELLED,
+    cancelledBy: 'driver',
+    cancelReason: String(cancelReason || '').trim(),
+    cancelledAt: new Date(),
   };
   if (existing.bookingMode === 'bidding') {
     cancelUpdate.biddingStatus = 'cancelled';
@@ -1242,12 +1248,12 @@ export const cancelScheduledRideByDriver = async ({ rideId, driverId }) => {
 
   await persistDispatchTrackingProgress({ rideId, reset: true }).catch(() => null);
 
-  const cancelReason = 'Your scheduled ride was cancelled by the driver.';
+  const socketCancelMessage = cancelReason || 'Your scheduled ride was cancelled by the driver.';
 
   emitToRoom(getUserRoom(ride.userId), 'rideCancelled', {
     rideId: String(ride._id),
     room: getRideRoom(ride._id),
-    reason: cancelReason,
+    reason: socketCancelMessage,
   });
 
   emitToRoom(getRideRoom(ride._id), 'rideRequestClosed', {
