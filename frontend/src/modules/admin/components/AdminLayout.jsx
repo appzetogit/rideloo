@@ -610,6 +610,33 @@ const ModeSwitcher = ({ mode, setMode }) => {
   );
 };
 
+// Short two-tone chime for the new-trip popup (#2). Uses the Web Audio API so no
+// audio asset is needed; stays silent if the browser blocks it before a gesture.
+let adminAlertAudioContext = null;
+const playNewTripAlert = () => {
+  try {
+    if (typeof window === 'undefined') return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    adminAlertAudioContext = adminAlertAudioContext || new Ctx();
+    const ctx = adminAlertAudioContext;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1180, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.36);
+  } catch {
+    /* audio is best-effort */
+  }
+};
+
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1191,6 +1218,33 @@ const AdminLayout = () => {
       });
     });
 
+    // Feature #2: prominent popup the moment a rider books a trip, with the OTP
+    // and a way straight into the Trips list. Also bumps the ride-request badge.
+    socketService.on('new_trip', (data = {}) => {
+      const label = String(data.serviceType || '').toLowerCase() === 'parcel' ? 'parcel delivery' : 'trip';
+      const route = `${data.pickupAddress || 'Pickup'}${data.dropAddress ? ` → ${data.dropAddress}` : ''}`;
+      setRideRequestUnreadTotal((current) => current + 1);
+      playNewTripAlert();
+      toast(
+        (t) => (
+          <div className="text-[12px] leading-snug">
+            <p className="font-extrabold text-[13px] text-indigo-700">New {label} booked</p>
+            {data.userName ? <p className="text-gray-900 font-semibold">{data.userName}{data.userPhone ? ` (${data.userPhone})` : ''}</p> : null}
+            <p className="text-gray-500">{route}</p>
+            <p className="text-gray-800 font-bold mt-0.5">₹{Number(data.fare || 0)}{data.otp ? ` · OTP ${data.otp}` : ''}</p>
+            <button
+              type="button"
+              className="mt-1.5 text-[11px] font-bold text-white bg-indigo-600 rounded px-2 py-1"
+              onClick={() => { toast.dismiss(t.id); navigate('/admin/trips'); }}
+            >
+              View trips
+            </button>
+          </div>
+        ),
+        { duration: 8000, id: `new-trip-${data.rideId || Date.now()}` },
+      );
+    });
+
     const handleSupportChatNotification = (payload = {}) => {
       const senderRole = String(payload.senderRole || payload.sender?.role || '').toLowerCase();
       const receiverRole = String(payload.receiverRole || payload.receiver?.role || '').toLowerCase();
@@ -1247,6 +1301,7 @@ const AdminLayout = () => {
       socketService.off('new_sos');
       socketService.off('new_driver_registration');
       socketService.off('new_booking');
+      socketService.off('new_trip');
       socketService.off('chat:message', handleSupportChatNotification);
     };
   }, [isAdminChatRoute, navigate]);

@@ -58,6 +58,7 @@ import {
 import { verifyAccessToken } from "../../services/tokenService.js";
 import { clearDriverActiveRideIfStale } from "../../services/rideService.js";
 import { getWalletSettings } from "../../services/appSettingsService.js";
+import { createCashfreeOrder, verifyCashfreeOrder } from "../../services/cashfreeService.js";
 import { RIDE_LIVE_STATUS, RIDE_STATUS } from "../../constants/index.js";
 import {
   createRentalVehicleType,
@@ -7248,6 +7249,85 @@ export const verifyDriverWalletTopup = async (req, res) => {
     data: {
       wallet: payload.wallet,
       ...(payload.transaction ? { transaction: payload.transaction } : {}),
+    },
+  });
+};
+
+// Cashfree wallet top-up (#5). Order -> app opens Cashfree SDK with the
+// payment_session_id -> verify confirms order_status PAID and credits once.
+export const createDriverCashfreeWalletTopupOrder = async (req, res) => {
+  const settings = await getWalletSettings();
+  const minTopUp = Number(settings.minimum_amount_added_to_wallet || 0);
+  const amount = Math.round(Number(req.body.amount) * 100) / 100;
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new ApiError(400, "Invalid top-up amount");
+  }
+  if (minTopUp > 0 && amount < minTopUp) {
+    throw new ApiError(400, `Minimum top-up amount is Rs ${minTopUp}`);
+  }
+
+  const driverId = String(req.auth?.sub || "");
+  const driver = await Driver.findById(driverId).select("name phone");
+  const compactDriverId = driverId.replace(/[^a-zA-Z0-9]/g, "").slice(-8) || "drv";
+  const orderId = `dwalcf_${compactDriverId}_${Date.now().toString(36)}`;
+
+  const order = await createCashfreeOrder({
+    amount,
+    orderId,
+    customer: { id: driverId, name: driver?.name, phone: driver?.phone },
+  });
+
+  res.json({
+    success: true,
+    data: {
+      gateway: "cashfree",
+      orderId: order.orderId,
+      paymentSessionId: order.paymentSessionId,
+      amount: order.amount,
+      currency: order.currency,
+      isProduction: order.isProduction,
+    },
+  });
+};
+
+export const verifyDriverCashfreeWalletTopup = async (req, res) => {
+  const orderId = toCleanString(req.body?.order_id || req.body?.orderId);
+  if (!orderId) {
+    throw new ApiError(400, "order_id is required");
+  }
+  const driverId = req.auth?.sub;
+
+  const verification = await verifyCashfreeOrder({ orderId });
+  if (!verification.isPaid) {
+    throw new ApiError(400, `Payment not completed (status: ${verification.status || "UNKNOWN"})`);
+  }
+
+  // Credit once per Cashfree order, even if the app verifies twice.
+  const alreadyCredited = await WalletTransaction.findOne({
+    driverId,
+    "metadata.providerOrderId": orderId,
+  })
+    .select("_id")
+    .lean();
+
+  let result = null;
+  if (!alreadyCredited) {
+    result = await topUpDriverWallet({
+      driverId,
+      amount: verification.amount,
+      metadata: { source: "cashfree", provider: "cashfree", providerOrderId: orderId },
+    });
+  }
+
+  const wallet = result?.wallet || (await serializeDriverWallet(await Driver.findById(driverId)));
+
+  res.json({
+    success: true,
+    data: {
+      wallet,
+      ...(result?.transaction ? { transaction: result.transaction } : {}),
+      alreadyCredited: Boolean(alreadyCredited),
     },
   });
 };

@@ -52,6 +52,10 @@ const normalizeRow = (row = {}) => ({
   // How it was actually paid, e.g. "Paid online via Razorpay (booked as cash)".
   paymentDetail: row.paymentDetail || '',
   paymentReference: row.paymentReference || '',
+  // #1: the 4-digit pickup OTP so admin can read it to rider/driver.
+  otp: row.otp || '',
+  // #4: which drivers the request was offered to, and who rejected it.
+  dispatch: row.dispatch || { notifiedDrivers: [], rejectedDrivers: [], lastAttemptAt: null },
 });
 
 const TripDetailsModal = ({ trip, onClose }) => {
@@ -93,12 +97,59 @@ const TripDetailsModal = ({ trip, onClose }) => {
               {trip.paymentDetail ? <p className="text-[11px] text-gray-500 mt-0.5">{trip.paymentDetail}</p> : null}
               {trip.paymentReference ? <p className="text-[10px] text-gray-400 font-mono break-all">Ref. {trip.paymentReference}</p> : null}
             </div>
+            {trip.otp ? (
+              <div>
+                <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-1">Ride OTP</p>
+                <p className="text-[16px] font-extrabold text-gray-900 font-mono tracking-[0.3em]">{trip.otp}</p>
+              </div>
+            ) : null}
             <div className="col-span-2 pt-2 border-t border-gray-50">
               <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Trip Status</p>
               <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded capitalize tracking-wide ${STATUS_STYLES[trip.tripStatus] || 'bg-gray-100 text-gray-600'}`}>
                 {String(trip.tripStatus).toLowerCase()}
               </span>
             </div>
+            {(trip.dispatch?.notifiedDrivers?.length || trip.dispatch?.rejectedDrivers?.length) ? (
+              <div className="col-span-2 pt-3 border-t border-gray-50 space-y-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-1.5">
+                    Request sent to ({trip.dispatch?.notifiedDrivers?.length || 0})
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(trip.dispatch?.notifiedDrivers || []).map((d) => {
+                      const rejected = (trip.dispatch?.rejectedDrivers || []).some((r) => r.id === d.id);
+                      return (
+                        <span
+                          key={d.id}
+                          title={`${d.name}${d.phone ? ' · ' + d.phone : ''}${d.vehicleNumber ? ' · ' + d.vehicleNumber : ''}${rejected ? ' (rejected)' : ''}`}
+                          className={`inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded ${rejected ? 'bg-red-50 text-red-600 line-through' : 'bg-indigo-50 text-indigo-700'}`}
+                        >
+                          {d.name}{d.vehicleNumber ? ` (${d.vehicleNumber})` : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+                {trip.dispatch?.rejectedDrivers?.length ? (
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-1.5">
+                      Rejected by ({trip.dispatch.rejectedDrivers.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {trip.dispatch.rejectedDrivers.map((d) => (
+                        <span
+                          key={d.id}
+                          title={`${d.name}${d.phone ? ' · ' + d.phone : ''}${d.vehicleNumber ? ' · ' + d.vehicleNumber : ''}`}
+                          className="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded bg-red-50 text-red-600"
+                        >
+                          {d.name}{d.vehicleNumber ? ` (${d.vehicleNumber})` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="border-t border-gray-100 p-4 bg-gray-50 flex justify-end">

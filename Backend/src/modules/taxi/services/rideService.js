@@ -1053,6 +1053,30 @@ export const resolveZoneForPickup = async (pickupCoords) => {
 export const resolveServiceLocationIdForPickup = async (pickupCoords) =>
   (await resolveZoneForPickup(pickupCoords)).serviceLocationId;
 
+// Feature #2: tell the admin panel the moment a trip is booked, so it can pop a
+// notification. Lazy import of emitToAdmins keeps this module free of a static
+// circular dependency on dispatchService.
+const notifyAdminsOfNewTrip = (ride, user) => {
+  if (!ride?._id) return;
+  import('./dispatchService.js')
+    .then(({ emitToAdmins }) => {
+      emitToAdmins('new_trip', {
+        rideId: String(ride._id),
+        serviceType: ride.serviceType || 'ride',
+        userName: user?.name || 'Customer',
+        userPhone: user?.phone || '',
+        pickupAddress: ride.pickupAddress || '',
+        dropAddress: ride.dropAddress || '',
+        fare: Number(ride.fare || 0),
+        otp: ride.otp || '',
+        bookingSource: ride.bookingSource || 'app',
+        scheduledAt: ride.scheduledAt || null,
+        createdAt: new Date().toISOString(),
+      });
+    })
+    .catch(() => {});
+};
+
 export const createRideRecord = async ({
   userId,
   pickupCoords,
@@ -1435,6 +1459,7 @@ export const createRideRecord = async ({
     await user.save();
     await syncDeliveryWithRide(ride);
 
+    notifyAdminsOfNewTrip(ride, user);
     return ride;
   }
 
@@ -1515,6 +1540,7 @@ export const createRideRecord = async ({
 
       await session.commitTransaction();
       await syncDeliveryWithRide(rideDoc);
+      notifyAdminsOfNewTrip(rideDoc, user);
       return rideDoc;
     } catch (error) {
       lastError = error;

@@ -134,6 +134,20 @@ const PaymentGateways = () => {
         { label: 'Production Secret Key', key: 'stripe.live_secret_key' },
         { label: 'Production Publishable Key', key: 'stripe.live_publishable_key' }
       ]
+    },
+    {
+      name: 'CASHFREE',
+      slug: 'cashfree',
+      logo: 'https://cashfreelogo.cashfree.com/cashfreepayments/logosvgs/Group_4355.svg',
+      enableKey: 'cashfree.enabled',
+      color: 'emerald',
+      fields: [
+        { label: 'Environment', key: 'cashfree.environment', type: 'select', options: ['test', 'production'] },
+        { label: 'Test App ID', key: 'cashfree.test_app_id' },
+        { label: 'Test Secret Key', key: 'cashfree.test_secret_key' },
+        { label: 'Live App ID', key: 'cashfree.live_app_id' },
+        { label: 'Live Secret Key', key: 'cashfree.live_secret_key' }
+      ]
     }
   ];
 
