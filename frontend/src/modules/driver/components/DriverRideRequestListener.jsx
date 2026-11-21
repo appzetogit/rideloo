@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import IncomingRideRequest from '../pages/IncomingRideRequest';
 import api from '../../../shared/api/axiosInstance';
 import { socketService } from '../../../shared/api/socket';
@@ -224,13 +225,20 @@ const DriverRideRequestListener = () => {
             playRideRequestAlertSound();
         };
 
-        const onRideRequestClosed = ({ rideId }) => {
+        const onRideRequestClosed = ({ rideId, reason }) => {
             if (acceptingRideIdRef.current && acceptingRideIdRef.current === rideId) return;
 
             const activeRequest = requestRef.current;
             if (!activeRequest?.rideId || activeRequest.rideId === rideId) {
                 stopRideRequestAlertSound();
                 setCurrentRequest(null);
+                // Feature #6: tell this driver their offer was taken by someone else.
+                if (reason === 'accepted-by-another-driver') {
+                    toast('Accepted by another driver', {
+                        icon: '🚗',
+                        id: `accepted-by-another-${rideId}`,
+                    });
+                }
             }
         };
 

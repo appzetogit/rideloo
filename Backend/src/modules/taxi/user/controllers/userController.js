@@ -6,6 +6,7 @@ import { asyncHandler } from '../../../../utils/asyncHandler.js';
 import { User } from '../models/User.js';
 import { createWebsiteBookingRequest } from '../services/websiteBookingService.js';
 import { UserWallet } from '../models/UserWallet.js';
+import { createCashfreeOrder, verifyCashfreeOrder } from '../../services/cashfreeService.js';
 import { AdminBusinessSetting } from '../../admin/models/AdminBusinessSetting.js';
 import { Notification } from '../../admin/promotions/models/Notification.js';
 import { BusService } from '../../admin/models/BusService.js';
@@ -2337,6 +2338,76 @@ export const transferUserWalletToDriver = async (req, res) => {
   } finally {
     session.endSession();
   }
+};
+
+// Cashfree wallet top-up (#5). Order -> app opens Cashfree SDK with the
+// payment_session_id -> verify confirms PAID and credits the wallet once
+// (idempotent on the Cashfree order id).
+export const createCashfreeWalletTopupOrder = async (req, res) => {
+  const userId = req.auth?.sub;
+  const amount = Math.round(Number(req.body?.amount) * 100) / 100;
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new ApiError(400, 'Invalid top-up amount');
+  }
+
+  const user = await User.findById(userId).select('name phone');
+  const compactUserId = String(userId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8) || 'usr';
+  const orderId = `uwalcf_${compactUserId}_${Date.now().toString(36)}`;
+
+  const order = await createCashfreeOrder({
+    amount,
+    orderId,
+    customer: { id: String(userId || ''), name: user?.name, phone: user?.phone },
+  });
+
+  res.json({
+    success: true,
+    data: {
+      gateway: 'cashfree',
+      orderId: order.orderId,
+      paymentSessionId: order.paymentSessionId,
+      amount: order.amount,
+      currency: order.currency,
+      isProduction: order.isProduction,
+    },
+  });
+};
+
+export const verifyCashfreeWalletTopup = async (req, res) => {
+  const userId = req.auth?.sub;
+  const orderId = toCleanString(req.body?.order_id || req.body?.orderId);
+
+  if (!orderId) {
+    throw new ApiError(400, 'order_id is required');
+  }
+
+  const verification = await verifyCashfreeOrder({ orderId });
+  if (!verification.isPaid) {
+    throw new ApiError(400, `Payment not completed (status: ${verification.status || 'UNKNOWN'})`);
+  }
+
+  const creditStatus = await creditUserWalletByReference({
+    userId,
+    amount: verification.amount,
+    title: 'Wallet top-up via Cashfree',
+    referenceKey: `cashfree:topup:${orderId}`,
+  });
+
+  await ensureUserWallet(userId);
+  const wallet = await UserWallet.findOne({ userId })
+    .select('balance refundWallet transactions')
+    .slice('transactions', -10)
+    .lean();
+  const transactions = Array.isArray(wallet?.transactions) ? wallet.transactions : [];
+
+  res.json({
+    success: true,
+    data: {
+      ...buildUserWalletPayload({ ...wallet, transactions }),
+      alreadyCredited: creditStatus === 'existing',
+    },
+  });
 };
 
 export const createRazorpayWalletTopupOrder = async (req, res) => {

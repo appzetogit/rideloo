@@ -96,6 +96,8 @@ import {
     topUpMyWallet,
     createDriverWalletTopupOrder,
     createDriverPhonePeWalletTopupOrder,
+    createDriverCashfreeWalletTopupOrder,
+    verifyDriverCashfreeWalletTopup,
   verifyDriverWalletTopup,
   verifyDriverPhonePeWalletTopup,
   verifyCurrentDriverBankDetails,
@@ -375,6 +377,17 @@ driverRouter.post(
     "/wallet/top-up/phonepe/status/:merchantTransactionId",
     authenticate(["driver"]),
     asyncHandler(verifyDriverPhonePeWalletTopup),
+  );
+  driverRouter.post(
+    "/wallet/top-up/cashfree/order",
+    authenticate(["driver"]),
+    paymentOrderRateLimit,
+    asyncHandler(createDriverCashfreeWalletTopupOrder),
+  );
+  driverRouter.post(
+    "/wallet/top-up/cashfree/verify",
+    authenticate(["driver"]),
+    asyncHandler(verifyDriverCashfreeWalletTopup),
   );
 driverRouter.post(
   "/wallet/withdrawals",

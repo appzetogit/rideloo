@@ -9,10 +9,16 @@ import {
 import {
   acceptRideBid,
   createRazorpayRideCompletionOrder,
+  createCashfreeRideCompletionOrder,
+  verifyCashfreeRideCompletion,
   createRazorpayRideFareOrder,
   verifyRazorpayRideFare,
+  createCashfreeRideFareOrder,
+  verifyCashfreeRideFare,
   cancelRide,
   createRazorpayRideTipOrder,
+  createCashfreeRideTipOrder,
+  verifyCashfreeRideTip,
   createRide,
   getRideBids,
   getRideAppTipSettings,
@@ -48,10 +54,16 @@ rideRouter.patch('/:rideId/status', authenticate(['driver']), asyncHandler(updat
 rideRouter.post('/:rideId/parcel-proof', authenticate(['driver']), asyncHandler(uploadParcelProof));
 rideRouter.post('/:rideId/complete-payment/razorpay/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createRazorpayRideCompletionOrder));
 rideRouter.post('/:rideId/complete-payment/razorpay/verify', authenticate(['user']), asyncHandler(verifyRazorpayRideCompletion));
+rideRouter.post('/:rideId/complete-payment/cashfree/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createCashfreeRideCompletionOrder));
+rideRouter.post('/:rideId/complete-payment/cashfree/verify', authenticate(['user']), asyncHandler(verifyCashfreeRideCompletion));
 rideRouter.post('/:rideId/complete-payment/wallet', authenticate(['user']), asyncHandler(payRideCompletionWithWallet));
 // The rider pays a cash ride's fare online (Razorpay) instead of the driver's UPI.
 rideRouter.post('/:rideId/fare-payment/razorpay/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createRazorpayRideFareOrder));
 rideRouter.post('/:rideId/fare-payment/razorpay/verify', authenticate(['user']), asyncHandler(verifyRazorpayRideFare));
+rideRouter.post('/:rideId/fare-payment/cashfree/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createCashfreeRideFareOrder));
+rideRouter.post('/:rideId/fare-payment/cashfree/verify', authenticate(['user']), asyncHandler(verifyCashfreeRideFare));
 rideRouter.post('/:rideId/tip/razorpay/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createRazorpayRideTipOrder));
 rideRouter.post('/:rideId/tip/razorpay/verify', authenticate(['user']), asyncHandler(verifyRazorpayRideTip));
+rideRouter.post('/:rideId/tip/cashfree/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createCashfreeRideTipOrder));
+rideRouter.post('/:rideId/tip/cashfree/verify', authenticate(['user']), asyncHandler(verifyCashfreeRideTip));
 rideRouter.patch('/:rideId/feedback', authenticate(['user']), asyncHandler(submitRideReview));
