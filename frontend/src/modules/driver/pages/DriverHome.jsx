@@ -1733,7 +1733,13 @@ const DriverHome = () => {
                     setShowRequest(false);
                     setCurrentRequest(null);
                     stopRideRequestAlertSound();
-                    if (reason === 'user-cancelled') {
+                    if (reason === 'accepted-by-another-driver') {
+                        setStatusMessage('This ride was accepted by another driver.');
+                        toast('Accepted by another driver', {
+                            icon: '🚗',
+                            id: `accepted-by-another-${rideId}`,
+                        });
+                    } else if (reason === 'user-cancelled') {
                         setStatusMessage(message || 'User cancelled the ride.');
                     } else if (reason === 'deleted-by-admin') {
                         setStatusMessage('Ride was cancelled by admin.');

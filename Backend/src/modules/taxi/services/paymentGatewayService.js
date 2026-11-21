@@ -29,6 +29,16 @@ const PAYMENT_GATEWAY_SPECS = {
       live: ['live_secret_key', 'live_publishable_key'],
     },
   },
+  cashfree: {
+    label: 'Cashfree',
+    environmentKey: 'environment',
+    // Cashfree calls its live mode "production"; test mode is the sandbox.
+    liveValue: 'production',
+    credentialsByEnvironment: {
+      test: ['test_app_id', 'test_secret_key'],
+      production: ['live_app_id', 'live_secret_key'],
+    },
+  },
 };
 
 const normalizeString = (value = '') => String(value || '').trim();
@@ -164,20 +174,24 @@ export const getPublicActivePaymentGateway = async () => {
     activeGateway: {
       slug: activeGateway.slug,
       label: activeGateway.label,
-      supportsWalletTopUp: ['razor_pay', 'phone_pay'].includes(activeGateway.slug),
-      supportsRentalAdvance: ['razor_pay', 'phone_pay'].includes(activeGateway.slug),
+      supportsWalletTopUp: ['razor_pay', 'phone_pay', 'cashfree'].includes(activeGateway.slug),
+      supportsRentalAdvance: ['razor_pay', 'phone_pay', 'cashfree'].includes(activeGateway.slug),
       walletTopUpMode:
         activeGateway.slug === 'razor_pay'
           ? 'razorpay_checkout'
           : activeGateway.slug === 'phone_pay'
             ? 'phonepe_redirect'
-            : 'unsupported',
+            : activeGateway.slug === 'cashfree'
+              ? 'cashfree_checkout'
+              : 'unsupported',
       rentalAdvanceMode:
         activeGateway.slug === 'razor_pay'
           ? 'razorpay_checkout'
           : activeGateway.slug === 'phone_pay'
             ? 'phonepe_redirect'
-            : 'unsupported',
+            : activeGateway.slug === 'cashfree'
+              ? 'cashfree_checkout'
+              : 'unsupported',
     },
   };
 };
@@ -208,6 +222,17 @@ export const resolveConfiguredGatewayCredentials = async (gatewayKey) => {
     }
 
     return { keyId, keySecret, environment };
+  }
+
+  if (gatewayKey === 'cashfree') {
+    const appId = normalizeString(isLive ? validatedGateway.live_app_id : validatedGateway.test_app_id);
+    const secretKey = normalizeString(isLive ? validatedGateway.live_secret_key : validatedGateway.test_secret_key);
+
+    if (appId.toLowerCase().includes('demo') || secretKey.toLowerCase().includes('demo')) {
+      throw new ApiError(500, 'Cashfree keys are demo placeholders. Configure real keys in Admin > Payment Gateways');
+    }
+
+    return { appId, secretKey, environment, isProduction: isLive };
   }
 
   if (gatewayKey === 'phone_pay') {

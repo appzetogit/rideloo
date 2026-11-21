@@ -6266,7 +6266,22 @@ const tripPaymentFields = (ride) => {
   };
 };
 
-const toAdminRideRow = (ride) => {
+// Resolve a list of dispatch driver ids (notified / rejected) to display rows,
+// using the name map batched in listAdminRides so there is no per-ride lookup.
+const resolveDispatchDriverList = (ids = [], driverNameMap) => {
+  const unique = [...new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || '')).filter(Boolean))];
+  return unique.map((id) => {
+    const driver = driverNameMap?.get(id);
+    return {
+      id,
+      name: driver?.name || 'Unknown driver',
+      phone: driver?.phone || '',
+      vehicleNumber: driver?.vehicleNumber || '',
+    };
+  });
+};
+
+const toAdminRideRow = (ride, ctx = {}) => {
   const requestCode = `REQ_${String(ride._id).slice(-12).toUpperCase()}`;
   const status = String(ride.status || '').toLowerCase();
   const liveStatus = String(ride.liveStatus || '').toLowerCase();
@@ -6319,6 +6334,16 @@ const toAdminRideRow = (ride) => {
       vehicleType: ride.driverId.vehicleType || '',
       vehicleNumber: ride.driverId.vehicleNumber || '',
     } : null,
+    // The 4-digit pickup OTP, so an admin can read it to the rider/driver when
+    // verifying a trip (feature: admin sees the OTP on a trip request).
+    otp: ride.otp || '',
+    // Dispatch spread: which drivers this request was offered to and which ones
+    // rejected it, resolved to names via ctx.driverNameMap (batched upstream).
+    dispatch: {
+      notifiedDrivers: resolveDispatchDriverList(ride.dispatchTracking?.notifiedDriverIds, ctx.driverNameMap),
+      rejectedDrivers: resolveDispatchDriverList(ride.dispatchTracking?.rejectedDriverIds, ctx.driverNameMap),
+      lastAttemptAt: ride.dispatchTracking?.lastDispatchAttemptAt || null,
+    },
   };
 };
 
@@ -6835,7 +6860,34 @@ const listAdminRides = async ({
     })(),
   ]);
 
-  return buildDatabasePaginator(rides.map(serializer), page, limit, total);
+  // Resolve every driver id tracked on the page's dispatch records (notified +
+  // rejected) to a name in one query, so the serializer can show the dispatch
+  // spread per trip without an N+1 lookup.
+  const dispatchDriverIds = [...new Set(
+    rides
+      .flatMap((ride) => [
+        ...(ride.dispatchTracking?.notifiedDriverIds || []),
+        ...(ride.dispatchTracking?.rejectedDriverIds || []),
+      ])
+      .map((id) => String(id || ''))
+      .filter(Boolean),
+  )];
+  const driverNameMap = new Map();
+  if (dispatchDriverIds.length) {
+    const dispatchDrivers = await Driver.find({ _id: { $in: dispatchDriverIds } })
+      .select('name phone vehicleNumber')
+      .lean();
+    for (const driver of dispatchDrivers) {
+      driverNameMap.set(String(driver._id), driver);
+    }
+  }
+
+  return buildDatabasePaginator(
+    rides.map((ride) => serializer(ride, { driverNameMap })),
+    page,
+    limit,
+    total,
+  );
 };
 
 

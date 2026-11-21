@@ -23,6 +23,8 @@ import {
   createRentalQuoteRequest,
   createRazorpayWalletTopupOrder,
   createPhonePeWalletTopupOrder,
+  createCashfreeWalletTopupOrder,
+  verifyCashfreeWalletTopup,
   handleUserRazorpayWalletTopupCallback,
   getBusSeatLayout,
   getBusRouteSuggestions,
@@ -158,6 +160,8 @@ userRouter.post('/wallet/razorpay/callback', asyncHandler(handleUserRazorpayWall
 userRouter.get('/wallet/razorpay/callback', asyncHandler(handleUserRazorpayWalletTopupCallback));
 userRouter.post('/wallet/phonepe/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createPhonePeWalletTopupOrder));
 userRouter.get('/wallet/phonepe/status/:merchantTransactionId', authenticate(['user']), asyncHandler(verifyPhonePeWalletTopup));
+userRouter.post('/wallet/cashfree/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createCashfreeWalletTopupOrder));
+userRouter.post('/wallet/cashfree/verify', authenticate(['user']), asyncHandler(verifyCashfreeWalletTopup));
 userRouter.post('/rental-advance/razorpay/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createRentalAdvancePaymentOrder));
 userRouter.post('/rental-advance/razorpay/verify', authenticate(['user']), asyncHandler(verifyRentalAdvancePayment));
 userRouter.post('/rental-advance/phonepe/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createPhonePeRentalAdvancePaymentOrder));
