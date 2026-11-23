@@ -29,17 +29,28 @@ const toList = (value) =>
 export const resolveDriverSubscriptionSettings = async () => {
   const group = (await getDriverSubscriptionSettings()) || {};
 
-  // A paid pass is mandatory for every driver, so the admin's mode / expiry
-  // behaviour / wallet-minimum switches no longer apply: with a pass the wallet
-  // balance is not checked, without one no ride is offered at all. Commission
-  // waiver, plans, payment methods and the cycle hour stay admin-controlled.
+  // Hybrid model, config-driven. Two tracks, decided per driver by whether they
+  // hold an active pass:
+  //  - with a pass: the per-trip commission is waived and the wallet minimum is
+  //    not checked (that is what the pass buys);
+  //  - without one (in 'both' mode): the driver still receives rides on the
+  //    normal commission model, as long as their wallet is above the minimum.
+  // A pass is only *mandatory* in 'subscription_only' mode. 'off' = commission
+  // only. Default is 'both' so an unset DB still enables the hybrid.
+  const rawMode = String(group.subscription_mode || 'both').trim().toLowerCase();
+  const mode = ['off', 'subscription_only', 'both'].includes(rawMode) ? rawMode : 'both';
+  // Only 'commission' and 'block' are meaningful; default to 'commission' so an
+  // expired pass falls back to commission rather than stopping rides.
+  const rawExpiry = String(group.on_expiry || 'commission').trim().toLowerCase();
+  const onExpiry = ['block', 'commission'].includes(rawExpiry) ? rawExpiry : 'commission';
+
   return {
-    mode: 'subscription_only',
+    mode,
     waiveCommission: isOn(group.waive_commission, true),
-    waiveWalletMinimum: true,
+    waiveWalletMinimum: isOn(group.waive_wallet_minimum, true),
     multiVehicleRule: String(group.multi_vehicle_rule || 'highest').trim().toLowerCase(),
     paymentMethods: toList(group.payment_methods || 'wallet,gateway'),
-    onExpiry: 'block',
+    onExpiry,
     cycleStartHour: Math.min(23, Math.max(0, Number(group.cycle_start_hour ?? 6) || 0)),
     timezone: String(group.cycle_timezone || 'Asia/Kolkata').trim() || 'Asia/Kolkata',
   };

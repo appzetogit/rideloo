@@ -223,11 +223,16 @@ export const ensureDriverWalletCanAcceptRide = async (driverOrId, { session } = 
       'wallet.cashLimit': wallet.cashLimit,
       'wallet.isBlocked': true,
     });
-    // A pass waives the minimum, so buying today's pass is the way back to
-    // work - not a top-up of the minimum.
-    throw new ApiError(403, wallet.rules.isWalletEnabled
-      ? "Buy today's pass to go online and get rides."
-      : 'Driver wallet is disabled by admin.');
+    // In 'subscription_only' mode a pass is the only way back to work. In
+    // hybrid/commission mode the driver can also simply top up the wallet above
+    // the minimum, so the message offers both.
+    const message = !wallet.rules.isWalletEnabled
+      ? 'Driver wallet is disabled by admin.'
+      : (subscriptionSettings.mode === 'subscription_only'
+          ? "Buy today's pass to go online and get rides."
+          : 'Wallet balance is below the minimum. Recharge your wallet or buy a subscription pass to receive rides.');
+
+    throw new ApiError(403, message);
   }
 
   if (Number(driver?.wallet?.cashLimit) !== wallet.cashLimit || driver?.wallet?.isBlocked) {

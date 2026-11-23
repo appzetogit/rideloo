@@ -40,10 +40,14 @@ const normalizeVehicleTypeIds = (vehicleTypeIds = [], vehicleTypeId = null) => {
  */
 const buildSubscriptionDriverFilter = async () => {
   const settings = await resolveDriverSubscriptionSettings();
-  const requiresPass =
-    settings.mode === 'subscription_only' || (settings.mode === 'both' && settings.onExpiry === 'block');
 
-  if (!requiresPass) return {};
+  // Only 'subscription_only' makes a pass mandatory for everyone. In 'both'
+  // (hybrid) mode a driver WITHOUT a pass is NOT excluded here - they stay
+  // eligible on the commission model, gated only by the wallet-not-blocked
+  // clause already present in buildDriverMatchFilters. 'off' never requires one.
+  const strictlyRequiresPass = settings.mode === 'subscription_only';
+
+  if (!strictlyRequiresPass) return {};
 
   const subscribed = await DriverSubscription.find(
     { status: 'active', paidAt: { $ne: null }, expiresAt: { $gt: new Date() } },

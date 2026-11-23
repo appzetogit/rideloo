@@ -123,12 +123,14 @@ export const createDefaultBusinessSettings = () => ({
   // because how a city is run changes: the same build has to support taking
   // only commission, only the pass, or both at once.
   //
-  // Off by default, so nothing changes until an admin turns it on.
+  // Defaults to 'both' (hybrid): a driver may work on commission or buy a pass.
+  // An admin can still switch to 'off' (commission only) or 'subscription_only'
+  // (a pass is mandatory to receive rides).
   driver_subscription: {
     // off - commission only, as before
     // subscription_only - a pass is required to receive rides
     // both - a driver may work on commission or buy a pass
-    subscription_mode: 'off',
+    subscription_mode: 'both',
     // Waive the per-trip commission while a pass is active. The rider's
     // platform fee is not waived: that was never the driver's money.
     waive_commission: '1',
