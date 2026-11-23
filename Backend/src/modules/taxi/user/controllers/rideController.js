@@ -365,9 +365,16 @@ export const getRideById = async (req, res) => {
 
   const ride = await getRideDetails(req.params.rideId);
 
+  // The start PIN belongs to the rider only. This route serves both rider and
+  // driver, so strip it for anyone who is not the rider.
+  const data = typeof ride?.toObject === 'function' ? ride.toObject() : ride;
+  if (data && req.auth.role !== 'user') {
+    data.otp = '';
+  }
+
   res.json({
     success: true,
-    data: ride,
+    data,
   });
 };
 
@@ -379,7 +386,7 @@ export const getMyActiveRide = async (req, res) => {
 
   res.json({
     success: true,
-    data: ride ? serializeRideRealtime(ride) : null,
+    data: ride ? serializeRideRealtime(ride, { includeOtp: req.auth.role === 'user' }) : null,
   });
 };
 
@@ -464,6 +471,7 @@ export const updateRideStatus = async (req, res) => {
     nextStatus,
     paymentMethod: req.body.paymentMethod,
     collectedVia: req.body.collectedVia,
+    otp: req.body.otp,
   });
 
   try {
