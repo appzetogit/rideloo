@@ -427,6 +427,14 @@ const rideSchema = new mongoose.Schema(
       minlength: 4,
       maxlength: 4,
     },
+    // How many wrong start-PIN attempts a driver has made on this ride. Capped
+    // server-side (see updateRideLifecycle) so the four-digit PIN cannot be
+    // brute-forced through the status endpoint.
+    otpAttempts: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     driverPaymentCollection: {
       provider: {
         type: String,

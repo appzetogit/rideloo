@@ -1408,7 +1408,8 @@ const ActiveTrip = () => {
 
     const displayFare = liveRequest?.fare || tripData.fare;
     const fareAmount = parseFareAmount(displayFare);
-    const expectedOtp = String(liveRaw?.otp || liveRequest?.otp || effectiveState?.otp || '');
+    // The start PIN is no longer sent to the driver app; it is verified on the
+    // server when the typed PIN is submitted (see startTripAfterOtp).
     const waitingPricing = liveRaw?.pricingSnapshot || liveRequest?.raw?.pricingSnapshot || effectiveState?.pricingSnapshot || {};
     const allowedPaymentModes = (() => {
         const rawItems = Array.isArray(waitingPricing?.allowed_payment_methods) ? waitingPricing.allowed_payment_methods : [];
@@ -1775,45 +1776,51 @@ const ActiveTrip = () => {
     }, [driverPaymentStatus, paymentQr?.id, rideId]);
 
     const startTripAfterOtp = async (enteredOtp) => {
-        if (String(enteredOtp).length !== 4) {
+        const pin = String(enteredOtp || '').trim();
+
+        if (pin.length !== 4) {
             setOtpError('Enter the full 4 digit PIN.');
             return;
         }
 
-        let resolvedExpectedOtp = String(expectedOtp || '');
-
-        try {
-            const driverToken = getLocalDriverToken();
-            const endpoint = isParcel ? '/deliveries/active/me' : '/rides/active/me';
-            const response = await api.get(endpoint, withDriverAuthorization(driverToken));
-            const latestActiveJob = unwrapApiPayload(response);
-            const latestRideId = getJobRideId(latestActiveJob);
-
-            if (latestRideId && String(latestRideId) === String(rideId || routeRideId || '')) {
-                resolvedExpectedOtp = String(latestActiveJob?.otp || resolvedExpectedOtp || '');
-
-                const latestPersistedState = buildPersistedTripState(latestActiveJob, {
-                    phase,
-                    arrivedAt: localArrivedAt || latestActiveJob?.arrivedAt || '',
-                });
-
-                if (latestPersistedState) {
-                    setHydratedTripState(latestPersistedState);
-                    writeStoredActiveTripSnapshot(latestPersistedState);
-                }
-            }
-        } catch {
-            // Fall back to the currently hydrated OTP if the refresh request fails.
-        }
-
-        if (String(enteredOtp) !== resolvedExpectedOtp) {
-            setOtpError('Wrong PIN. Ask the passenger again.');
+        if (!rideId) {
+            setOtpError('Ride not ready yet. Please wait a moment.');
             return;
         }
 
         setOtpError('');
+
+        // The correct PIN lives ONLY on the server — this app is never told it.
+        // So we send what the driver typed and let the server accept or reject
+        // it, and we advance the trip only after the server confirms. A wrong
+        // PIN (or a tampered client) can no longer start the trip.
+        try {
+            const driverToken = getLocalDriverToken();
+            await api.patch(
+                `/rides/${rideId}/status`,
+                { status: 'started', otp: pin },
+                withDriverAuthorization(driverToken),
+            );
+        } catch (error) {
+            const status = Number(error?.status || error?.response?.status || 0);
+            if (status === 403) {
+                setOtpError('Wrong PIN. Ask the passenger for the PIN shown in their app.');
+            } else if (status === 429) {
+                setOtpError('Too many wrong attempts. Ask the passenger to re-share the PIN.');
+            } else {
+                setOtpError(error?.message || 'Could not start the trip. Please try again.');
+            }
+            setOtp(['', '', '', '']);
+            return;
+        }
+
+        // Server accepted the PIN — advance the trip locally. The status change
+        // is already broadcast to the rider by the backend; no socket re-emit of
+        // 'started' here (it would re-run the server PIN check and fail).
+        setOtpError('');
         setLocalArrivedAt('');
         setPhase('in_trip');
+
         const startedAtIso = new Date().toISOString();
         const rawJobForSnapshot = liveRaw?.rideId || liveRaw?._id || liveRaw?.id
             ? liveRaw
@@ -1832,21 +1839,6 @@ const ActiveTrip = () => {
             writeStoredActiveTripSnapshot(optimisticSnapshot);
             setHydratedTripState(optimisticSnapshot);
         }
-
-        try {
-            if (rideId) {
-                const driverToken = getLocalDriverToken();
-                await api.patch(
-                    `/rides/${rideId}/status`,
-                    { status: 'started' },
-                    withDriverAuthorization(driverToken),
-                );
-            }
-        } catch {
-            // Keep the optimistic local state; socket/live hydration will reconcile when available.
-        }
-
-        publishRideStatus('started');
     };
 
     useEffect(() => {
@@ -2178,13 +2170,10 @@ const ActiveTrip = () => {
 
         const enteredOtp = nextOtp.join('');
 
-        if (enteredOtp.length === 4 && expectedOtp && enteredOtp === expectedOtp) {
+        // The correct PIN is known only to the server now, so auto-submit as
+        // soon as 4 digits are entered and let the server verify it.
+        if (enteredOtp.length === 4) {
             setTimeout(() => startTripAfterOtp(enteredOtp), 250);
-            return;
-        }
-
-        if (enteredOtp.length === 4 && expectedOtp) {
-            setOtpError('Incorrect PIN. Please enter the PIN shown to the passenger.');
         }
     };
 

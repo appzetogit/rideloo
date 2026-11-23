@@ -354,26 +354,15 @@ const processCompletedDriverReferralReward = async (ride) => {
 const normalizeAddress = (value = '') => String(value || '').trim();
 const generateRideOtp = () => String(Math.floor(1000 + Math.random() * 9000));
 
-/// The rider's ride OTP: the same four digits for every trip they take.
+/// A fresh four-digit start PIN for THIS specific trip.
 ///
-/// Kept on the account and resolved once. A rider who already has rides keeps
-/// the code from their most recent one, so a code a driver has already been
-/// given does not change underneath them.
-const resolveRiderOtp = async (user) => {
-  if (/^\d{4}$/.test(String(user.rideOtp || ''))) {
-    return String(user.rideOtp);
-  }
-
-  const previous = await Ride.findOne({ userId: user._id, otp: /^\d{4}$/ })
-    .sort({ createdAt: -1 })
-    .select('otp')
-    .lean();
-
-  const otp = previous?.otp || generateRideOtp();
-  user.rideOtp = otp;
-  await User.updateOne({ _id: user._id }, { $set: { rideOtp: otp } });
-  return otp;
-};
+/// Previously the same code was reused for every trip a rider ever took (kept
+/// on the account), so a PIN once seen worked forever. Each ride now gets its
+/// own random PIN: the rider sees it in their app, the driver must type it to
+/// start the trip, and it is verified server-side (updateRideLifecycle). The
+/// PIN is never serialised to the driver, so the only way the driver gets it is
+/// from the rider at pickup.
+const resolveRiderOtp = async () => generateRideOtp();
 const DEFAULT_BID_STEP_AMOUNT = 10;
 const DEFAULT_MAX_BID_STEPS = 5;
 
@@ -1607,7 +1596,11 @@ const populateRideRealtime = async (rideId) =>
     .populate('userId', 'name phone profileImage')
     .populate('driverId', 'name phone profileImage vehicleType vehicleIconType vehicleNumber vehicleColor vehicleMake vehicleModel vehicleImage rating bankDetails.upiId bankDetails.qrCodeImage bankDetails.upiVerificationStatus bankDetails.upiVerifiedName');
 
-export const serializeRideRealtime = (ride) => ({
+// `includeOtp` defaults to false so the start PIN is NEVER emitted unless the
+// caller has confirmed the audience is the rider. The driver and any shared
+// ride-room broadcast must use the default — the driver must get the PIN from
+// the passenger at pickup, not from the payload.
+export const serializeRideRealtime = (ride, { includeOtp = false } = {}) => ({
   rideId: String(ride._id),
   room: getRideRoom(ride._id),
   deliveryId: ride.deliveryId?._id ? String(ride.deliveryId._id) : ride.deliveryId ? String(ride.deliveryId) : null,
@@ -1691,7 +1684,7 @@ export const serializeRideRealtime = (ride) => ({
         updatedAt: ride.driverPaymentCollection.updatedAt || null,
       }
     : null,
-  otp: ride.otp || '',
+  otp: includeOtp ? (ride.otp || '') : '',
   parcel: ride.deliveryId?.parcel || ride.parcel || null,
   intercity: ride.intercity || null,
   commissionAmount: ride.commissionAmount,
@@ -1906,7 +1899,9 @@ export const listRideHistoryForIdentity = async ({ role, entityId, limit = 50, p
     estimatedDistanceMeters: ride.estimatedDistanceMeters || 0,
     estimatedDurationMinutes: ride.estimatedDurationMinutes || 0,
     paymentMethod: ride.paymentMethod,
-    otp: ride.otp || '',
+    // Start PIN only ever goes to the rider — never the driver (see
+    // serializeRideRealtime for the full rationale).
+    otp: role === 'user' ? (ride.otp || '') : '',
     parcel: ride.deliveryId?.parcel || ride.parcel || null,
     intercity: ride.intercity || null,
     pricingSnapshot: ride.pricingSnapshot || null,
@@ -2133,7 +2128,9 @@ export const saveParcelProof = async ({ rideId, driverId, stage, imageUrl }) => 
   return ride;
 };
 
-export const updateRideLifecycle = async ({ rideId, driverId, nextStatus, paymentMethod, collectedVia }) => {
+const MAX_START_OTP_ATTEMPTS = 5;
+
+export const updateRideLifecycle = async ({ rideId, driverId, nextStatus, paymentMethod, collectedVia, otp }) => {
   const config = rideStatusConfig[nextStatus];
 
   if (!config) {
@@ -2150,6 +2147,33 @@ export const updateRideLifecycle = async ({ rideId, driverId, nextStatus, paymen
 
   if (!config.allowedCurrent.includes(ride.liveStatus)) {
     throw new ApiError(409, `Ride cannot move from ${ride.liveStatus} to ${nextStatus}`);
+  }
+
+  // Start-PIN enforcement. A non-parcel ride may only move to STARTED with the
+  // exact four-digit PIN shown in the rider's app. This is verified HERE, on the
+  // server, because the driver app never receives the PIN and any client-side
+  // check is trivially bypassable (a tampered app or a direct API/socket call).
+  // Parcels gate on photo proof instead (assertParcelProof above).
+  if (nextStatus === RIDE_LIVE_STATUS.STARTED && String(ride.serviceType || '') !== 'parcel') {
+    const expectedOtp = String(ride.otp || '').trim();
+    const providedOtp = String(otp ?? '').trim();
+
+    if (!expectedOtp) {
+      throw new ApiError(409, 'This ride has no start PIN');
+    }
+
+    if ((ride.otpAttempts || 0) >= MAX_START_OTP_ATTEMPTS) {
+      throw new ApiError(429, 'Too many incorrect PIN attempts. Ask the passenger to re-share the PIN.');
+    }
+
+    if (!providedOtp || providedOtp !== expectedOtp) {
+      // Persist the failed attempt atomically — we throw before ride.save().
+      await Ride.updateOne({ _id: ride._id }, { $inc: { otpAttempts: 1 } });
+      throw new ApiError(403, 'Incorrect start PIN');
+    }
+
+    // Correct PIN — clear the counter (saved below with the rest of the ride).
+    ride.otpAttempts = 0;
   }
 
   ride.liveStatus = nextStatus;
