@@ -59,7 +59,46 @@ const ensureServiceLocation = async () => {
   });
 };
 
+// Rough area of a zone's outer ring, to rank nested zones by size - mirrors
+// matchingService.pickMostSpecificZone.
+const zoneRingArea = (zone) => {
+  const ring = zone?.geometry?.coordinates?.[0];
+  if (!Array.isArray(ring) || ring.length < 4) {
+    return Number.POSITIVE_INFINITY;
+  }
+  let twiceArea = 0;
+  for (let i = 0; i < ring.length - 1; i += 1) {
+    twiceArea += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+  }
+  return Math.abs(twiceArea / 2);
+};
+
+// The real, active zone already covering the seed driver's coordinates, resolved
+// like a real pickup (smallest containing polygon wins).
+const findCoveringZone = async () => {
+  try {
+    const [lng, lat] = DEFAULT_COORDINATES;
+    const covering = await Zone.find({
+      active: { $ne: false },
+      status: { $ne: 'inactive' },
+      geometry: {
+        $geoIntersects: { $geometry: { type: 'Point', coordinates: [lng, lat] } },
+      },
+    }).lean();
+    if (!covering.length) return null;
+    return [...covering].sort((a, b) => zoneRingArea(a) - zoneRingArea(b))[0];
+  } catch {
+    return null;
+  }
+};
+
 const ensureZone = async (serviceLocationId) => {
+  // Prefer an existing real city zone instead of creating a tiny 'Static Seed
+  // Zone' box that would shadow it in pickMostSpecificZone(). The seed box is a
+  // last resort for an empty database only.
+  const realZone = await findCoveringZone();
+  if (realZone) return realZone;
+
   const existing = await Zone.findOne({
     $or: [
       { name: 'Static Seed Zone' },
@@ -97,6 +136,9 @@ const main = async () => {
 
   const serviceLocation = await ensureServiceLocation();
   const zone = await ensureZone(serviceLocation._id);
+  // Driver's service location follows the resolved zone (real city zone carries
+  // its own, often null; only the fallback seed zone carries the seeded one).
+  const driverServiceLocationId = zone.service_location_id ?? null;
   const completedAt = new Date();
   const passwordHash = await hashPassword(`driver-${phone}`);
 
@@ -109,7 +151,7 @@ const main = async () => {
         email: buildEmail(phone),
         gender: 'male',
         password: passwordHash,
-        service_location_id: serviceLocation._id,
+        service_location_id: driverServiceLocationId,
         vehicleType: 'car',
         vehicleIconType: 'car',
         vehicleMake: 'Maruti Suzuki',

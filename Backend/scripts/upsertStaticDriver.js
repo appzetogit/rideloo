@@ -62,7 +62,59 @@ const ensureServiceLocation = async () => {
   });
 };
 
+// Rough area of a zone's outer ring, to rank nested zones by size - mirrors
+// matchingService.pickMostSpecificZone so this script lands the static driver in
+// the SAME zone a real pickup at these coordinates would resolve to.
+const zoneRingArea = (zone) => {
+  const ring = zone?.geometry?.coordinates?.[0];
+  if (!Array.isArray(ring) || ring.length < 4) {
+    return Number.POSITIVE_INFINITY;
+  }
+  let twiceArea = 0;
+  for (let i = 0; i < ring.length - 1; i += 1) {
+    twiceArea += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+  }
+  return Math.abs(twiceArea / 2);
+};
+
+// The real, active zone that already covers the static driver's coordinates, if
+// any - resolved the same way dispatch resolves a pickup (smallest containing
+// polygon wins).
+const findCoveringZone = async () => {
+  try {
+    const [lng, lat] = DEFAULT_COORDINATES;
+    const covering = await Zone.find({
+      active: { $ne: false },
+      status: { $ne: 'inactive' },
+      geometry: {
+        $geoIntersects: { $geometry: { type: 'Point', coordinates: [lng, lat] } },
+      },
+    }).lean();
+
+    if (!covering.length) {
+      return null;
+    }
+
+    return [...covering].sort((a, b) => zoneRingArea(a) - zoneRingArea(b))[0];
+  } catch {
+    // No geo index yet (fresh local DB) etc. - fall back to the seed zone below.
+    return null;
+  }
+};
+
 const ensureZone = async (serviceLocationId) => {
+  // Prefer an existing real city zone (e.g. 'indore'). This is the important
+  // change: the script used to always create a tiny 'Static Seed Zone' box,
+  // which - being smaller than the real zone - shadowed it in
+  // pickMostSpecificZone(), so every pickup resolved to the seed zone (which has
+  // no setprices). Reusing the real zone means no shadow is ever created on a
+  // configured deployment. The seed box is now only a last resort for an empty
+  // database (fresh local dev).
+  const realZone = await findCoveringZone();
+  if (realZone) {
+    return realZone;
+  }
+
   const existing = await Zone.findOne({
     $or: [
       { name: 'Static Seed Zone' },
@@ -283,7 +335,13 @@ const main = async () => {
   const serviceLocation = await ensureServiceLocation();
   const zone = await ensureZone(serviceLocation._id);
 
-  const driver = await upsertDriver(passwordHash, serviceLocation._id, zone._id);
+  // The driver's service location must follow whatever zone we resolved: a real
+  // city zone (e.g. 'indore') carries its own service_location_id (often null),
+  // so matching stays consistent with a real pickup. Only the fallback seed zone
+  // carries the seeded 'Indore' service location.
+  const driverServiceLocationId = zone.service_location_id ?? null;
+
+  const driver = await upsertDriver(passwordHash, driverServiceLocationId, zone._id);
   const owner = await upsertOwner(passwordHash, serviceLocation._id);
   const serviceCenter = await upsertServiceStore(serviceLocation._id, zone._id);
   const staff = await upsertServiceStaff(serviceCenter._id);
