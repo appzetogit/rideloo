@@ -8,6 +8,7 @@ import {
     isValidCashfreeWebhookSignature,
     settleCashfreeWalletOrder,
 } from '../../services/cashfreeSettlementService.js';
+import { settleCashfreeRideOrderFromWebhook } from '../../user/controllers/rideController.js';
 
 /**
  * Common controller for shared utilities like file uploads
@@ -87,6 +88,12 @@ export const handleCashfreeWebhook = asyncHandler(async (req, res) => {
         try {
             const settlement = await settleCashfreeWalletOrder({ orderId });
             outcome = settlement.credited ? 'credited' : settlement.paid ? 'already_credited' : `status_${settlement.status}`;
+        } catch (error) {
+            outcome = `error: ${error?.message || error}`;
+        }
+    } else if (orderId && /^(ucmpcf|ufarecf|utipcf)_/.test(orderId)) {
+        try {
+            outcome = await settleCashfreeRideOrderFromWebhook(orderId);
         } catch (error) {
             outcome = `error: ${error?.message || error}`;
         }

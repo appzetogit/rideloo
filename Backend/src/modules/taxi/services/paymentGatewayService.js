@@ -175,8 +175,16 @@ export const getPublicActivePaymentGateway = async () => {
       slug: activeGateway.slug,
       label: activeGateway.label,
       supportsWalletTopUp: ['razor_pay', 'phone_pay', 'cashfree'].includes(activeGateway.slug),
-      // Rental advance has Razorpay and PhonePe routes only; no Cashfree one yet.
-      supportsRentalAdvance: ['razor_pay', 'phone_pay'].includes(activeGateway.slug),
+      supportsRentalAdvance: ['razor_pay', 'phone_pay', 'cashfree'].includes(activeGateway.slug),
+      // Paying a ride online (end-of-ride payment, a cash fare paid online, a
+      // tip) has Razorpay and Cashfree routes; PhonePe has none.
+      supportsRidePayment: ['razor_pay', 'cashfree'].includes(activeGateway.slug),
+      ridePaymentMode:
+        activeGateway.slug === 'razor_pay'
+          ? 'razorpay_checkout'
+          : activeGateway.slug === 'cashfree'
+            ? 'cashfree_checkout'
+            : 'unsupported',
       walletTopUpMode:
         activeGateway.slug === 'razor_pay'
           ? 'razorpay_checkout'
@@ -190,7 +198,9 @@ export const getPublicActivePaymentGateway = async () => {
           ? 'razorpay_checkout'
           : activeGateway.slug === 'phone_pay'
             ? 'phonepe_redirect'
-            : 'unsupported',
+            : activeGateway.slug === 'cashfree'
+              ? 'cashfree_checkout'
+              : 'unsupported',
     },
   };
 };

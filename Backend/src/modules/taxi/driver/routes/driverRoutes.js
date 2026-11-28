@@ -129,6 +129,7 @@ import {
   uploadPoolingOnboardingImageRequest,
 } from "../controllers/driverController.js";
 import { triggerDriverSosAlert } from '../../safety/controllers/safetyController.js';
+import { cashfreeOrderStatusHandler } from '../../services/cashfreeSettlementService.js';
 import { listActiveSurges } from '../../services/surgeService.js';
 import { Driver } from '../models/Driver.js';
 import { getOpportunityMap } from '../../services/opportunityMapService.js';
@@ -691,3 +692,5 @@ driverRouter.patch(
   asyncHandler(goOffline),
 );
 driverRouter.post("/logout", authenticate(["driver"]), asyncHandler(logoutDriver));
+// What happened to a Cashfree wallet top-up (e.g. the app was closed mid-payment).
+driverRouter.get("/payments/cashfree/:orderId/status", authenticate(["driver"]), asyncHandler(cashfreeOrderStatusHandler("driver")));

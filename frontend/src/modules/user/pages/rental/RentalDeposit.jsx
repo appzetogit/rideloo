@@ -6,6 +6,7 @@ import { userService } from '../../services/userService';
 import { userAuthService } from '../../services/authService';
 import { useSettings } from '../../../../shared/context/SettingsContext';
 import { openExternalCheckout } from '../../../../shared/utils/externalNavigation';
+import { openCashfreeCheckout } from '../../../../shared/utils/cashfreeCheckout';
 import {
   clearPendingPhonePeRedirect,
   rememberPendingPhonePeRedirect,
@@ -371,7 +372,7 @@ const RentalDeposit = () => {
           throw new Error('No payment gateway is enabled by admin right now.');
         }
 
-        if (!supportsRentalAdvance || !['razorpay_checkout', 'phonepe_redirect'].includes(rentalAdvanceMode)) {
+        if (!supportsRentalAdvance || !['razorpay_checkout', 'phonepe_redirect', 'cashfree_checkout'].includes(rentalAdvanceMode)) {
           throw new Error(`${activePaymentGateway?.label || 'This payment gateway'} is enabled by admin, but rental advance payment is not available for it yet.`);
         }
       }
@@ -439,6 +440,50 @@ const RentalDeposit = () => {
           throw new Error('PhonePe checkout could not open outside the app WebView. Please update the app bridge or open this payment flow in your browser.');
         }
         setPaying(false);
+        return;
+      }
+
+      if (rentalAdvanceMode === 'cashfree_checkout') {
+        const orderResponse = await userService.createCashfreeRentalAdvanceOrder({
+          amount: payableNow,
+          bookingReference,
+          vehicleId: vehicle.id || vehicle._id,
+        });
+        const order = orderResponse?.data || orderResponse || {};
+        const { closedWithError } = await openCashfreeCheckout(order);
+
+        let payment;
+        try {
+          const verifyResponse = await userService.verifyCashfreeRentalAdvance(order.orderId);
+          payment = verifyResponse?.data || verifyResponse || {};
+        } catch (verifyError) {
+          throw new Error(closedWithError || verifyError?.message || 'Payment was not completed');
+        }
+
+        const methodLabel = PAYMENT_METHODS.find((item) => item.id === method)?.label || 'Online';
+        const finalReference = order.bookingReference || bookingReference;
+        const bookingRequest = await submitBookingRequest({
+          paymentStatus: 'paid',
+          paymentMethod: method,
+          paymentMethodLabel: methodLabel,
+          payment,
+          bookingReference: finalReference,
+        });
+        navigate('/rental/confirmed', {
+          replace: true,
+          state: {
+            ...state,
+            vehicle,
+            deposit: payableNow,
+            paymentMethod: method,
+            paymentMethodLabel: methodLabel,
+            paymentStatus: 'paid',
+            payment,
+            bookingReference: bookingRequest.bookingReference || finalReference,
+            bookingRequest,
+          },
+        });
+        sessionStorage.removeItem(RENTAL_DEPOSIT_STATE_KEY);
         return;
       }
 

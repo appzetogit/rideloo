@@ -24,6 +24,7 @@ import {
 } from '../services/userOtpService.js';
 import { assignPushTokenToEntity, releasePushTokenFromOthers } from '../../services/pushTokenService.js';
 import {
+  CASHFREE_RENTAL_ADVANCE_SOURCE,
   CASHFREE_USER_WALLET_SOURCE,
   buildUserWalletOrderId,
   settleCashfreeWalletOrder,
@@ -2590,6 +2591,78 @@ export const createRentalAdvancePaymentOrder = async (req, res) => {
   });
 };
 
+// Cashfree rental advance: order -> app's Cashfree checkout -> verify, then
+// the app sends the verified payment with the booking request, which checks it
+// again (confirmRentalAdvancePayment).
+export const createCashfreeRentalAdvanceOrder = async (req, res) => {
+  const amount = normalizeMoneyAmount(req.body?.amount);
+  const userId = String(req.auth?.sub || '');
+  const bookingReference =
+    toCleanString(req.body?.bookingReference) || `RNT-${Date.now().toString(36).slice(-6).toUpperCase()}`;
+  const user = await User.findById(userId).select('name phone');
+  const compactUserId = userId.replace(/[^a-zA-Z0-9]/g, '').slice(-8) || 'usr';
+  const orderId = `urntcf_${compactUserId}_${Date.now().toString(36)}`;
+
+  const order = await createCashfreeOrder({
+    amount,
+    orderId,
+    customer: { id: userId, name: user?.name, phone: user?.phone },
+    tags: {
+      source: CASHFREE_RENTAL_ADVANCE_SOURCE,
+      userId,
+      vehicleId: String(req.body?.vehicleId || '').trim(),
+      bookingReference,
+    },
+  });
+
+  res.status(201).json({
+    success: true,
+    data: {
+      gateway: 'cashfree',
+      orderId: order.orderId,
+      paymentSessionId: order.paymentSessionId,
+      amount: order.amount,
+      currency: order.currency,
+      isProduction: order.isProduction,
+      bookingReference,
+    },
+  });
+};
+
+export const verifyCashfreeRentalAdvance = async (req, res) => {
+  const orderId = toCleanString(req.body?.order_id || req.body?.orderId);
+  if (!orderId) {
+    throw new ApiError(400, 'order_id is required');
+  }
+
+  const verification = await verifyCashfreeOrder({ orderId });
+  if (
+    String(verification.tags?.userId || '') !== String(req.auth?.sub || '')
+    || verification.tags?.source !== CASHFREE_RENTAL_ADVANCE_SOURCE
+  ) {
+    throw new ApiError(403, 'This payment does not belong to your account');
+  }
+  if (!verification.isPaid) {
+    throw new ApiError(400, `Payment not completed (status: ${verification.status || 'UNKNOWN'})`);
+  }
+
+  res.status(201).json({
+    success: true,
+    data: {
+      provider: 'cashfree',
+      gateway: 'cashfree',
+      status: 'paid',
+      amount: verification.amount,
+      currency: 'INR',
+      orderId,
+      paymentId: orderId,
+      signature: '',
+      bookingReference: verification.tags?.bookingReference || '',
+    },
+    message: 'Rental advance payment verified successfully',
+  });
+};
+
 export const createPhonePeRentalAdvancePaymentOrder = async (req, res) => {
   const amount = normalizeMoneyAmount(req.body?.amount);
   const vehicleId = String(req.body?.vehicleId || '').trim();
@@ -4013,6 +4086,122 @@ export const createRentalQuoteRequest = async (req, res) => {
   });
 };
 
+// A booking's advance only counts as paid once the server has seen the
+// payment. Until now "paymentStatus: paid" from the app was stored as sent, so
+// a booking could be marked paid without any payment, or with a payment
+// smaller than the advance.
+const confirmRentalAdvancePayment = async ({ userId, bookingReference, payableNow, paymentPayload = {} }) => {
+  const orderIdInput = toCleanString(paymentPayload.orderId || paymentPayload.razorpay_order_id);
+  const paymentIdInput = toCleanString(paymentPayload.paymentId || paymentPayload.razorpay_payment_id);
+  const signatureInput = toCleanString(paymentPayload.signature || paymentPayload.razorpay_signature);
+  const provider = toCleanString(paymentPayload.provider || paymentPayload.gateway).toLowerCase()
+    || (paymentPayload.razorpay_order_id ? 'razorpay' : '');
+  const fail = (why) => {
+    throw new ApiError(400, `Advance payment could not be verified: ${why}`);
+  };
+  let verified = null;
+
+  if (provider === 'wallet') {
+    const referenceKey = `rental_advance_${bookingReference}`;
+    const wallet = await UserWallet.findOne(
+      { userId, 'transactions.referenceKey': referenceKey },
+      { transactions: { $elemMatch: { referenceKey } } },
+    ).lean();
+    const entry = wallet?.transactions?.[0];
+    if (!entry || entry.kind !== 'debit') {
+      fail('no wallet payment was taken for this booking');
+    }
+    verified = { provider: 'wallet', amount: Number(entry.amount || 0), orderId: '', paymentId: bookingReference, signature: '' };
+  } else if (provider === 'razorpay') {
+    if (!orderIdInput || !paymentIdInput || !signatureInput) {
+      fail('payment details are missing');
+    }
+    const { keyId, keySecret } = await resolveRazorpayCredentials();
+    const expected = crypto.createHmac('sha256', keySecret).update(`${orderIdInput}|${paymentIdInput}`).digest('hex');
+    if (expected !== signatureInput) {
+      fail('invalid payment signature');
+    }
+    const order = await razorpayRequest({
+      method: 'GET',
+      path: `/orders/${encodeURIComponent(orderIdInput)}`,
+      keyId,
+      keySecret,
+    });
+    if (String(order?.notes?.userId || '') !== String(userId) || order?.notes?.purpose !== 'rental_advance_payment') {
+      fail('this payment is not a rental advance of this account');
+    }
+    verified = {
+      provider: 'razorpay',
+      amount: Number(order?.amount || 0) / 100,
+      orderId: orderIdInput,
+      paymentId: paymentIdInput,
+      signature: signatureInput,
+    };
+  } else if (provider === 'cashfree') {
+    if (!orderIdInput) {
+      fail('order id is missing');
+    }
+    const verification = await verifyCashfreeOrder({ orderId: orderIdInput });
+    if (!verification.isPaid) {
+      fail(`payment status is ${verification.status || 'UNKNOWN'}`);
+    }
+    if (
+      String(verification.tags?.userId || '') !== String(userId)
+      || verification.tags?.source !== CASHFREE_RENTAL_ADVANCE_SOURCE
+    ) {
+      fail('this payment is not a rental advance of this account');
+    }
+    verified = { provider: 'cashfree', amount: verification.amount, orderId: orderIdInput, paymentId: orderIdInput, signature: '' };
+  } else if (provider === 'phonepe') {
+    const merchantTransactionId = toCleanString(paymentPayload.merchantTransactionId || orderIdInput);
+    const compactUserId = String(userId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8);
+    if (!merchantTransactionId || !compactUserId || !merchantTransactionId.endsWith(compactUserId)) {
+      fail('this payment is not a rental advance of this account');
+    }
+    const { clientId, clientSecret, clientVersion, environment } = await resolvePhonePeCredentials();
+    const status = await phonePeRequest({
+      method: 'GET',
+      path: `/checkout/v2/order/${encodeURIComponent(merchantTransactionId)}/status?details=false`,
+      clientId,
+      clientSecret,
+      clientVersion,
+      environment,
+    });
+    const latest = Array.isArray(status?.paymentDetails) ? status.paymentDetails[0] || {} : {};
+    const state = String(status?.state || latest?.state || '').trim().toUpperCase();
+    if (state !== 'COMPLETED') {
+      fail(`payment status is ${state || 'UNKNOWN'}`);
+    }
+    verified = {
+      provider: 'phonepe',
+      amount: Math.round(Number(status?.amount || latest?.amount || 0)) / 100,
+      orderId: merchantTransactionId,
+      paymentId: toCleanString(latest?.transactionId || merchantTransactionId),
+      signature: '',
+    };
+  } else {
+    fail('unknown payment provider');
+  }
+
+  if (!(Number(verified.amount) >= Number(payableNow) - 0.01)) {
+    fail(`Rs ${verified.amount} was paid but the advance due is Rs ${payableNow}`);
+  }
+
+  if (verified.orderId) {
+    const reused = await RentalBookingRequest.findOne({
+      'payment.orderId': verified.orderId,
+      bookingReference: { $ne: bookingReference },
+    })
+      .select('_id')
+      .lean();
+    if (reused) {
+      throw new ApiError(409, 'This payment is already used for another rental booking');
+    }
+  }
+
+  return verified;
+};
+
 export const createRentalBookingRequest = async (req, res) => {
   const payload = req.body || {};
   const vehicleTypeId = String(payload.vehicleTypeId || payload.vehicleId || '').trim();
@@ -4103,6 +4292,16 @@ export const createRentalBookingRequest = async (req, res) => {
         ? 'failed'
         : 'pending'
     : 'not_required';
+
+  // Checked here, not trusted from the app.
+  const verifiedAdvance = normalizedPaymentStatus === 'paid'
+    ? await confirmRentalAdvancePayment({
+        userId: user._id,
+        bookingReference,
+        payableNow,
+        paymentPayload,
+      })
+    : null;
 
   const normalizedDrivingLicenseUrl = toCleanString(
     kycDocumentsPayload.drivingLicense?.imageUrl ||
@@ -4199,17 +4398,25 @@ export const createRentalBookingRequest = async (req, res) => {
     paymentStatus: normalizedPaymentStatus,
     paymentMethod,
     paymentMethodLabel,
-    payment: {
-      provider: toCleanString(paymentPayload.provider),
-      status: toCleanString(paymentPayload.status) || normalizedPaymentStatus,
-      amount: normalizedPaymentStatus === 'not_required'
-        ? 0
-        : Math.max(0, Number(paymentPayload.amount || payableNow || 0)),
-      currency: toCleanString(paymentPayload.currency) || 'INR',
-      orderId: toCleanString(paymentPayload.orderId || paymentPayload.razorpay_order_id),
-      paymentId: toCleanString(paymentPayload.paymentId || paymentPayload.razorpay_payment_id),
-      signature: toCleanString(paymentPayload.signature || paymentPayload.razorpay_signature),
-    },
+    payment: verifiedAdvance
+      ? {
+          provider: verifiedAdvance.provider,
+          status: 'paid',
+          amount: verifiedAdvance.amount,
+          currency: 'INR',
+          orderId: verifiedAdvance.orderId,
+          paymentId: verifiedAdvance.paymentId,
+          signature: verifiedAdvance.signature,
+        }
+      : {
+          provider: toCleanString(paymentPayload.provider),
+          status: normalizedPaymentStatus,
+          amount: normalizedPaymentStatus === 'not_required' ? 0 : payableNow,
+          currency: 'INR',
+          orderId: '',
+          paymentId: '',
+          signature: '',
+        },
     contactName: toCleanString(user.name),
     contactPhone: toCleanString(user.phone),
     contactEmail: toCleanString(user.email),

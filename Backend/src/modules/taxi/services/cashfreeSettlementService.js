@@ -41,7 +41,7 @@ const isLegacyOrderOf = (orderId, role, id) => {
 // One settle per order at a time inside this process, so a verify call and the
 // webhook arriving together cannot both pass the "already credited?" check.
 const inFlight = new Map();
-const withOrderLock = async (orderId, task) => {
+export const withOrderLock = async (orderId, task) => {
   while (inFlight.has(orderId)) {
     await inFlight.get(orderId).catch(() => {});
   }
@@ -145,6 +145,44 @@ export const settleCashfreeWalletOrder = async ({ orderId, claimant = null }) =>
       orderId: cleanOrderId,
     });
     return { ...base, credited, driverResult: result };
+  });
+};
+
+export const CASHFREE_RENTAL_ADVANCE_SOURCE = 'rental_advance';
+
+/**
+ * Express handler factory: GET .../payments/cashfree/:orderId/status.
+ * Lets an app that was closed mid-payment ask what happened to its order
+ * without settling anything. Only the order's own account may ask.
+ */
+export const cashfreeOrderStatusHandler = (role) => async (req, res) => {
+  const orderId = String(req.params?.orderId || '').trim();
+  if (!orderId) {
+    throw new ApiError(400, 'orderId is required');
+  }
+  const accountId = String(req.auth?.sub || '');
+  const verification = await verifyCashfreeOrder({ orderId });
+  const tags = verification.tags || {};
+
+  const owned = role === 'driver'
+    ? (tags.source === CASHFREE_DRIVER_WALLET_SOURCE && String(tags.driverId || '') === accountId)
+      || (!tags.source && isLegacyOrderOf(orderId, 'driver', accountId))
+    : (Boolean(tags.source) && tags.source !== CASHFREE_DRIVER_WALLET_SOURCE && String(tags.userId || '') === accountId)
+      || (!tags.source && isLegacyOrderOf(orderId, 'user', accountId));
+  if (!owned) {
+    throw new ApiError(403, 'This payment does not belong to your account');
+  }
+
+  res.json({
+    success: true,
+    data: {
+      orderId: verification.orderId,
+      status: verification.status,
+      paid: verification.isPaid,
+      amount: verification.amount,
+      purpose: tags.source || '',
+      rideId: tags.rideId || null,
+    },
   });
 };
 

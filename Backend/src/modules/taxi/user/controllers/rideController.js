@@ -4,6 +4,7 @@ import { ApiError } from '../../../../utils/ApiError.js';
 import { normalizePoint } from '../../../../utils/geo.js';
 import { resolveConfiguredGatewayCredentials } from '../../services/paymentGatewayService.js';
 import { createCashfreeOrder, verifyCashfreeOrder } from '../../services/cashfreeService.js';
+import { withOrderLock } from '../../services/cashfreeSettlementService.js';
 import { Driver } from '../../driver/models/Driver.js';
 import { WalletTransaction } from '../../driver/models/WalletTransaction.js';
 import { applyDriverWalletAdjustment, serializeDriverWallet } from '../../driver/services/walletService.js';
@@ -743,6 +744,9 @@ export const createCashfreeRideCompletionOrder = async (req, res) => {
       driverId: String(ride.driverId),
       tipAmount: String(tipAmount),
       source: 'ride_completion',
+      // So the webhook can finish the ride even if the app never verifies.
+      rating: String(Number(req.body?.rating || 0)),
+      comment: String(req.body?.comment || '').slice(0, 200),
     },
   });
 
@@ -763,28 +767,25 @@ export const createCashfreeRideCompletionOrder = async (req, res) => {
   });
 };
 
-export const verifyCashfreeRideCompletion = async (req, res) => {
-  const rideId = String(req.params.rideId || '').trim();
-  const rating = Number(req.body?.rating || 0);
-  const comment = String(req.body?.comment || '');
+// Shared by the app's verify call and the Cashfree webhook.
+const settleCashfreeRideCompletion = async ({ rideId, userId, orderId, rating, comment, tipAmount: requestedTip }) => {
   const { tipAmount } = await validateRideCompletionFeedback({
     rating,
-    tipAmount: req.body?.tipAmount,
+    tipAmount: requestedTip,
   });
-  const orderId = String(req.body?.order_id || req.body?.orderId || '').trim();
 
   if (!orderId) {
     throw new ApiError(400, 'order_id is required');
   }
 
-  const ride = await loadCompletedRideForUser(rideId, req.auth.sub);
+  const ride = await loadCompletedRideForUser(rideId, userId);
 
   // The app retrying after a dropped response: already settled with this order.
   if (
     ride.feedback?.submittedAt &&
     String(ride.driverPaymentCollection?.providerOrderId || '') === orderId
   ) {
-    return res.json({ success: true, data: await getRideDetails(rideId) });
+    return getRideDetails(rideId);
   }
 
   const verification = await verifyCashfreeOrder({ orderId });
@@ -795,7 +796,7 @@ export const verifyCashfreeRideCompletion = async (req, res) => {
   // The order must be this ride's completion order, for this rider.
   if (
     String(verification.tags?.rideId || '') !== rideId
-    || String(verification.tags?.userId || '') !== String(req.auth.sub)
+    || String(verification.tags?.userId || '') !== String(userId)
     || String(verification.tags?.source || '') !== 'ride_completion'
   ) {
     throw new ApiError(400, 'This payment is not for this ride');
@@ -825,10 +826,10 @@ export const verifyCashfreeRideCompletion = async (req, res) => {
   try {
     session.startTransaction();
 
-    const liveRide = await loadCompletedRideForUser(rideId, req.auth.sub, session);
+    const liveRide = await loadCompletedRideForUser(rideId, userId, session);
     const result = await finalizeRideCompletion({
       ride: liveRide,
-      userId: req.auth.sub,
+      userId: userId,
       rating,
       comment,
       tipAmount,
@@ -861,16 +862,26 @@ export const verifyCashfreeRideCompletion = async (req, res) => {
       });
     }
 
-    res.json({
-      success: true,
-      data: result.ride,
-    });
+    return result.ride;
   } catch (error) {
     await session.abortTransaction();
     throw error;
   } finally {
     session.endSession();
   }
+};
+
+export const verifyCashfreeRideCompletion = async (req, res) => {
+  const orderId = String(req.body?.order_id || req.body?.orderId || '').trim();
+  const data = await withOrderLock(orderId, () => settleCashfreeRideCompletion({
+    rideId: String(req.params.rideId || '').trim(),
+    userId: String(req.auth.sub),
+    orderId,
+    rating: Number(req.body?.rating || 0),
+    comment: String(req.body?.comment || ''),
+    tipAmount: req.body?.tipAmount,
+  }));
+  res.json({ success: true, data });
 };
 
 export const payRideCompletionWithWallet = async (req, res) => {
@@ -1225,19 +1236,18 @@ export const createCashfreeRideFareOrder = async (req, res) => {
   });
 };
 
-export const verifyCashfreeRideFare = async (req, res) => {
-  const rideId = String(req.params.rideId || '').trim();
-  const orderId = String(req.body?.order_id || req.body?.orderId || '').trim();
+// Shared by the app's verify call and the Cashfree webhook.
+const settleCashfreeRideFare = async ({ rideId, userId, orderId }) => {
 
   if (!orderId) {
     throw new ApiError(400, 'order_id is required');
   }
 
-  const ride = await loadRideForFarePayment(rideId, req.auth.sub);
+  const ride = await loadRideForFarePayment(rideId, userId);
 
   // The app retrying after a dropped response: already done.
   if (String(ride.driverPaymentCollection?.providerOrderId || '') === orderId && isDriverCollectionPaid(ride)) {
-    return res.json({ success: true, data: await getRideDetails(rideId) });
+    return getRideDetails(rideId);
   }
 
   const verification = await verifyCashfreeOrder({ orderId });
@@ -1248,7 +1258,7 @@ export const verifyCashfreeRideFare = async (req, res) => {
   // The order must be this ride's fare order, for this rider.
   if (
     String(verification.tags?.rideId || '') !== rideId
-    || String(verification.tags?.userId || '') !== String(req.auth.sub)
+    || String(verification.tags?.userId || '') !== String(userId)
     || String(verification.tags?.source || '') !== RIDER_FARE_ONLINE_SOURCE
   ) {
     throw new ApiError(400, 'This payment is not for this ride');
@@ -1271,7 +1281,7 @@ export const verifyCashfreeRideFare = async (req, res) => {
     const updated = await Ride.findOneAndUpdate(
       {
         _id: rideId,
-        userId: req.auth.sub,
+        userId: userId,
         'driverPaymentCollection.paidAt': null,
         'driverPaymentCollection.status': { $nin: [...PAYMENT_PAID_STATUSES] },
       },
@@ -1310,7 +1320,7 @@ export const verifyCashfreeRideFare = async (req, res) => {
       metadata: {
         source: RIDER_FARE_ONLINE_SOURCE,
         rideId,
-        userId: String(req.auth.sub),
+        userId: String(userId),
         provider: 'cashfree',
         providerOrderId: orderId,
         providerPaymentId: orderId,
@@ -1345,7 +1355,17 @@ export const verifyCashfreeRideFare = async (req, res) => {
     });
   }
 
-  res.json({ success: true, data: await getRideDetails(rideId) });
+  return getRideDetails(rideId);
+};
+
+export const verifyCashfreeRideFare = async (req, res) => {
+  const orderId = String(req.body?.order_id || req.body?.orderId || '').trim();
+  const data = await withOrderLock(orderId, () => settleCashfreeRideFare({
+    rideId: String(req.params.rideId || '').trim(),
+    userId: String(req.auth.sub),
+    orderId,
+  }));
+  res.json({ success: true, data });
 };
 
 export const createRazorpayRideTipOrder = async (req, res) => {
@@ -1620,6 +1640,9 @@ export const createCashfreeRideTipOrder = async (req, res) => {
       userId: String(req.auth.sub),
       driverId: String(ride.driverId),
       source: 'ride_tip',
+      // So the webhook can record the tip even if the app never verifies.
+      rating: String(Number(req.body?.rating || 0)),
+      comment: String(req.body?.comment || '').slice(0, 200),
     },
   });
 
@@ -1637,12 +1660,10 @@ export const createCashfreeRideTipOrder = async (req, res) => {
   });
 };
 
-export const verifyCashfreeRideTip = async (req, res) => {
-  const rideId = String(req.params.rideId || '').trim();
-  const rating = Number(req.body?.rating || 0);
-  const comment = String(req.body?.comment || '');
-  const tipAmount = normalizeMoneyAmount(req.body?.tipAmount, 'tipAmount');
-  const orderId = String(req.body?.order_id || req.body?.orderId || '').trim();
+// Shared by the app's verify call and the Cashfree webhook.
+const settleCashfreeRideTip = async ({ rideId, userId, orderId, rating, comment: rawComment, tipAmount: requestedTip }) => {
+  const comment = String(rawComment || '');
+  const tipAmount = normalizeMoneyAmount(requestedTip, 'tipAmount');
 
   if (!orderId) {
     throw new ApiError(400, 'order_id is required');
@@ -1666,7 +1687,7 @@ export const verifyCashfreeRideTip = async (req, res) => {
 
   const ride = await Ride.findOne({
     _id: rideId,
-    userId: req.auth.sub,
+    userId: userId,
     status: 'completed',
   });
 
@@ -1680,7 +1701,7 @@ export const verifyCashfreeRideTip = async (req, res) => {
 
   // The app retrying after a dropped response: already settled with this order.
   if (ride.feedback?.submittedAt && String(ride.feedback?.tipOrderId || '') === orderId) {
-    return res.json({ success: true, data: await getRideDetails(rideId) });
+    return getRideDetails(rideId);
   }
 
   if (ride.feedback?.submittedAt) {
@@ -1695,7 +1716,7 @@ export const verifyCashfreeRideTip = async (req, res) => {
   // The order must be this ride's tip order, for this rider.
   if (
     String(verification.tags?.rideId || '') !== rideId
-    || String(verification.tags?.userId || '') !== String(req.auth.sub)
+    || String(verification.tags?.userId || '') !== String(userId)
     || String(verification.tags?.source || '') !== 'ride_tip'
   ) {
     throw new ApiError(400, 'This payment is not for this ride');
@@ -1742,7 +1763,7 @@ export const verifyCashfreeRideTip = async (req, res) => {
           providerOrderId: orderId,
           providerPaymentId: orderId,
           rideId: String(ride._id),
-          userId: String(req.auth.sub),
+          userId: String(userId),
         },
       });
 
@@ -1775,10 +1796,63 @@ export const verifyCashfreeRideTip = async (req, res) => {
     });
   }
 
-  res.json({
-    success: true,
-    data: await getRideDetails(ride._id),
-  });
+  return getRideDetails(ride._id);
+};
+
+export const verifyCashfreeRideTip = async (req, res) => {
+  const orderId = String(req.body?.order_id || req.body?.orderId || '').trim();
+  const data = await withOrderLock(orderId, () => settleCashfreeRideTip({
+    rideId: String(req.params.rideId || '').trim(),
+    userId: String(req.auth.sub),
+    orderId,
+    rating: Number(req.body?.rating || 0),
+    comment: String(req.body?.comment || ''),
+    tipAmount: req.body?.tipAmount,
+  }));
+  res.json({ success: true, data });
+};
+
+/**
+ * Cashfree webhook for a ride order (completion, cash fare paid online, tip).
+ * Finishes the payment from the order's own tags when the app was closed
+ * before it could verify. Returns a short outcome for the log.
+ */
+export const settleCashfreeRideOrderFromWebhook = async (orderId) => {
+  const verification = await verifyCashfreeOrder({ orderId });
+  if (!verification.isPaid) {
+    return `status_${verification.status || 'UNKNOWN'}`;
+  }
+  const tags = verification.tags || {};
+  const rideId = String(tags.rideId || '');
+  const userId = String(tags.userId || '');
+  if (!rideId || !userId) {
+    return 'no_tags';
+  }
+  const rating = Number(tags.rating || 0);
+
+  if (tags.source === 'ride_completion') {
+    if (!rating) {
+      return 'needs_app_verify';
+    }
+    await withOrderLock(orderId, () => settleCashfreeRideCompletion({
+      rideId, userId, orderId, rating, comment: tags.comment || '', tipAmount: tags.tipAmount,
+    }));
+    return 'settled_completion';
+  }
+  if (tags.source === RIDER_FARE_ONLINE_SOURCE) {
+    await withOrderLock(orderId, () => settleCashfreeRideFare({ rideId, userId, orderId }));
+    return 'settled_fare';
+  }
+  if (tags.source === 'ride_tip') {
+    if (!rating) {
+      return 'needs_app_verify';
+    }
+    await withOrderLock(orderId, () => settleCashfreeRideTip({
+      rideId, userId, orderId, rating, comment: tags.comment || '', tipAmount: verification.amount,
+    }));
+    return 'settled_tip';
+  }
+  return 'ignored';
 };
 
 /// The admin's negotiation bands, so the apps step fares the way the server

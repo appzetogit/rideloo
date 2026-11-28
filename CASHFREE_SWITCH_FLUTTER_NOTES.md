@@ -7,10 +7,11 @@
 `GET /common/payment-gateway` (public) now returns:
 ```json
 { "activeGateway": { "slug": "cashfree", "label": "Cashfree",
-  "supportsWalletTopUp": true, "walletTopUpMode": "cashfree_checkout",
-  "supportsRentalAdvance": false, "rentalAdvanceMode": "unsupported" } }
+  "supportsWalletTopUp": true,  "walletTopUpMode": "cashfree_checkout",
+  "supportsRentalAdvance": true, "rentalAdvanceMode": "cashfree_checkout",
+  "supportsRidePayment": true,  "ridePaymentMode": "cashfree_checkout" } }
 ```
-The app should choose its checkout from `slug` / `walletTopUpMode`, not hardcode Razorpay. When `supportsRentalAdvance` is false, hide online payment for the rental advance.
+Pick the checkout for each feature from its own flag and mode (`walletTopUpMode`, `rentalAdvanceMode`, `ridePaymentMode`). Don't hardcode Razorpay. When a `supports...` flag is false, hide online payment for that feature.
 
 ## 2. Flow (same for every Cashfree payment)
 1. **Order:** call the `.../cashfree/order` API. The response has `orderId`, `paymentSessionId`, `amount` and `isProduction`.
@@ -27,14 +28,33 @@ The app should choose its checkout from `slug` / `walletTopUpMode`, not hardcode
 | Driver wallet top-up | `POST /drivers/wallet/top-up/cashfree/order` `{amount}` | `POST /drivers/wallet/top-up/cashfree/verify` |
 | Pay at end of ride (+tip) | `POST /rides/:rideId/complete-payment/cashfree/order` `{rating, comment, tipAmount}` | `POST /rides/:rideId/complete-payment/cashfree/verify` `{order_id, rating, comment, tipAmount}` |
 | Pay a cash ride's fare online | `POST /rides/:rideId/fare-payment/cashfree/order` | `POST /rides/:rideId/fare-payment/cashfree/verify` |
-| Tip only | `POST /rides/:rideId/tip/cashfree/order` | `POST /rides/:rideId/tip/cashfree/verify` |
+| Tip only | `POST /rides/:rideId/tip/cashfree/order` `{tipAmount, rating, comment}` | `POST /rides/:rideId/tip/cashfree/verify` `{order_id, tipAmount, rating, comment}` |
+| Rental advance | `POST /users/rental-advance/cashfree/order` `{amount, bookingReference, vehicleId}` | `POST /users/rental-advance/cashfree/verify` |
+| Order status (rider) | — | `GET /users/payments/cashfree/:orderId/status` |
+| Order status (driver) | — | `GET /drivers/payments/cashfree/:orderId/status` |
+
+**Important:** for the end-of-ride payment and the tip, send `rating` and `comment` in the **order** call too, not only in verify. The webhook uses them to finish the ride if the app closes.
 
 ## 4. If the app closes mid-payment
-For wallet top-ups (rider and driver), Cashfree's webhook now credits the wallet on the server, even if the app never calls verify. The app only needs to refresh the balance when it opens again. For ride payments, verify is still required.
+Cashfree's webhook now settles these payments on the server, even if the app never calls verify:
+- rider and driver wallet top-ups
+- end-of-ride payment
+- a cash fare paid online
+- tips
 
-## 5. Not available with Cashfree yet
-- **Rental advance:** only Razorpay/PhonePe routes exist, so `supportsRentalAdvance` is false.
-- **Driver subscription by gateway:** only Razorpay/PhonePe. Drivers can still pay the subscription from the wallet. Tell us if a Cashfree subscription payment is needed.
+When the app opens again, it can ask `GET .../payments/cashfree/:orderId/status` what happened. The response looks like `{ status: "PAID", paid: true, purpose, rideId, amount }`. Then refresh the balance or the ride. Calling verify again is also safe: it gives the same result and never charges or credits twice.
+
+## 5. Rental booking: the advance is now checked by the server ⚠️
+`POST /users/rental-bookings` with `paymentStatus: "paid"` now **requires payment proof** in the `payment` object. The server checks it itself. Before, it accepted "paid" without checking.
+- **Cashfree:** `payment: { provider: "cashfree", orderId }`. Send the order from `rental-advance/cashfree` after verify succeeds.
+- **Wallet:** `payment: { provider: "wallet" }`. Call `POST /users/rental-advance/wallet` first, with the same `bookingReference`.
+- **Razorpay:** `payment: { provider: "razorpay", razorpay_order_id, razorpay_payment_id, razorpay_signature }`
+- **PhonePe:** `payment: { provider: "phonepe", merchantTransactionId }`
+
+The paid amount must be at least the advance. One payment can't be used for two bookings (`409`). Without valid proof the booking is refused with `400 "Advance payment could not be verified: …"`. Use the same `bookingReference` in both the order call and the booking call.
+
+## 5b. Still not available with Cashfree
+- **Driver subscription by gateway:** only Razorpay/PhonePe. Drivers can still pay the subscription from the wallet, and the wallet can be topped up with Cashfree.
 
 ## 6. Testing (sandbox)
 In the Cashfree sandbox checkout, choose **Net Banking**, pick any bank, enter OTP `111000` on the simulator page and choose **SUCCESS**. No real money is involved.

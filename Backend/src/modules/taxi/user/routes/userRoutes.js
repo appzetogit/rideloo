@@ -25,6 +25,8 @@ import {
   createPhonePeWalletTopupOrder,
   createCashfreeWalletTopupOrder,
   verifyCashfreeWalletTopup,
+  createCashfreeRentalAdvanceOrder,
+  verifyCashfreeRentalAdvance,
   handleUserRazorpayWalletTopupCallback,
   getBusSeatLayout,
   getBusRouteSuggestions,
@@ -71,6 +73,7 @@ import {
   getTripCategory,
   getZones,
 } from '../controllers/userController.js';
+import { cashfreeOrderStatusHandler } from '../../services/cashfreeSettlementService.js';
 import {
   searchPoolingRoutes,
   getPoolingRouteDetails,
@@ -167,6 +170,10 @@ userRouter.post('/rental-advance/razorpay/verify', authenticate(['user']), async
 userRouter.post('/rental-advance/phonepe/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createPhonePeRentalAdvancePaymentOrder));
 userRouter.get('/rental-advance/phonepe/status/:merchantTransactionId', authenticate(['user']), asyncHandler(verifyPhonePeRentalAdvancePayment));
 userRouter.post('/rental-advance/wallet', authenticate(['user']), asyncHandler(payRentalAdvanceWithWallet));
+userRouter.post('/rental-advance/cashfree/order', authenticate(['user']), paymentOrderRateLimit, asyncHandler(createCashfreeRentalAdvanceOrder));
+userRouter.post('/rental-advance/cashfree/verify', authenticate(['user']), asyncHandler(verifyCashfreeRentalAdvance));
+// What happened to a Cashfree order (e.g. the app was closed mid-payment).
+userRouter.get('/payments/cashfree/:orderId/status', authenticate(['user']), asyncHandler(cashfreeOrderStatusHandler('user')));
 userRouter.get('/buses/routes', authenticate(['user']), asyncHandler(getBusRouteSuggestions));
 userRouter.get('/buses/search', authenticate(['user']), asyncHandler(searchBuses));
 userRouter.get('/buses/:id/seats', authenticate(['user']), asyncHandler(getBusSeatLayout));
