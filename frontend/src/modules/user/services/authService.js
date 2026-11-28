@@ -99,6 +99,8 @@ export const userAuthService = {
   transferWalletToDriver: (phone, amount) => api.post('/users/wallet/transfer/driver', { phone, amount }, withUserAuth()),
   createWalletTopupOrder: (amount) => api.post('/users/wallet/razorpay/order', { amount }, withUserAuth()),
   verifyWalletTopup: (payload) => api.post('/users/wallet/razorpay/verify', payload, withUserAuth()),
+  createCashfreeWalletTopupOrder: (amount) => api.post('/users/wallet/cashfree/order', { amount }, withUserAuth()),
+  verifyCashfreeWalletTopup: (orderId) => api.post('/users/wallet/cashfree/verify', { order_id: orderId }, withUserAuth()),
   createPhonePeWalletTopupOrder: (amount) => api.post('/users/wallet/phonepe/order', { amount }, withUserAuth()),
   verifyPhonePeWalletTopup: (merchantTransactionId) =>
     api.get(`/users/wallet/phonepe/status/${merchantTransactionId}`, withUserAuth()),

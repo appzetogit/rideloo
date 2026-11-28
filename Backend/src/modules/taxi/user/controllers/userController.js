@@ -23,6 +23,11 @@ import {
   verifyUserOtp,
 } from '../services/userOtpService.js';
 import { assignPushTokenToEntity, releasePushTokenFromOthers } from '../../services/pushTokenService.js';
+import {
+  CASHFREE_USER_WALLET_SOURCE,
+  buildUserWalletOrderId,
+  settleCashfreeWalletOrder,
+} from '../../services/cashfreeSettlementService.js';
 import { BusSeatHold } from '../models/BusSeatHold.js';
 import { BusBooking } from '../models/BusBooking.js';
 import { RentalBookingRequest } from '../../admin/models/RentalBookingRequest.js';
@@ -2354,13 +2359,14 @@ export const createCashfreeWalletTopupOrder = async (req, res) => {
   }
 
   const user = await User.findById(userId).select('name phone');
-  const compactUserId = String(userId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8) || 'usr';
-  const orderId = `uwalcf_${compactUserId}_${Date.now().toString(36)}`;
+  const orderId = buildUserWalletOrderId(userId);
 
   const order = await createCashfreeOrder({
     amount,
     orderId,
     customer: { id: String(userId || ''), name: user?.name, phone: user?.phone },
+    // Binds the order to this rider: verify and the webhook credit only them.
+    tags: { source: CASHFREE_USER_WALLET_SOURCE, userId: String(userId || '') },
   });
 
   res.json({
@@ -2384,17 +2390,14 @@ export const verifyCashfreeWalletTopup = async (req, res) => {
     throw new ApiError(400, 'order_id is required');
   }
 
-  const verification = await verifyCashfreeOrder({ orderId });
-  if (!verification.isPaid) {
-    throw new ApiError(400, `Payment not completed (status: ${verification.status || 'UNKNOWN'})`);
-  }
-
-  const creditStatus = await creditUserWalletByReference({
-    userId,
-    amount: verification.amount,
-    title: 'Wallet top-up via Cashfree',
-    referenceKey: `cashfree:topup:${orderId}`,
+  const settlement = await settleCashfreeWalletOrder({
+    orderId,
+    claimant: { role: 'user', id: String(userId || '') },
   });
+  if (!settlement.paid) {
+    throw new ApiError(400, `Payment not completed (status: ${settlement.status || 'UNKNOWN'})`);
+  }
+  const creditStatus = settlement.credited ? 'credited' : 'existing';
 
   await ensureUserWallet(userId);
   const wallet = await UserWallet.findOne({ userId })

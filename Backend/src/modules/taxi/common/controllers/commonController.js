@@ -4,6 +4,10 @@ import { env } from '../../../../config/env.js';
 import { getReferralSettings, getReferralTranslationContent } from '../../admin/services/adminService.js';
 import { getPublicActivePaymentGateway } from '../../services/paymentGatewayService.js';
 import { buildPaymentRequestContext, logPaymentDiagnostic } from '../../services/paymentDiagnostics.js';
+import {
+    isValidCashfreeWebhookSignature,
+    settleCashfreeWalletOrder,
+} from '../../services/cashfreeSettlementService.js';
 
 /**
  * Common controller for shared utilities like file uploads
@@ -58,6 +62,46 @@ export const getPaymentGatewayConfig = asyncHandler(async (_req, res) => {
         success: true,
         data,
     });
+});
+
+// Cashfree payment webhook (order_meta.notify_url). Credits a wallet top-up
+// even when the app was closed before it could call verify. The payload is
+// only a hint: the order is read back from Cashfree before anything is paid
+// out, and ride payments are left to their own verify calls.
+export const handleCashfreeWebhook = asyncHandler(async (req, res) => {
+    const valid = await isValidCashfreeWebhookSignature({
+        rawBody: req.rawBody,
+        timestamp: req.get('x-webhook-timestamp'),
+        signature: req.get('x-webhook-signature'),
+    }).catch(() => false);
+
+    if (!valid) {
+        return res.status(401).json({ success: false, message: 'Invalid signature' });
+    }
+
+    const orderId = String(req.body?.data?.order?.order_id || '').trim();
+    const type = String(req.body?.type || '');
+    let outcome = 'ignored';
+
+    if (orderId && /^(uwalcf|dwalcf)_/.test(orderId)) {
+        try {
+            const settlement = await settleCashfreeWalletOrder({ orderId });
+            outcome = settlement.credited ? 'credited' : settlement.paid ? 'already_credited' : `status_${settlement.status}`;
+        } catch (error) {
+            outcome = `error: ${error?.message || error}`;
+        }
+    }
+
+    logPaymentDiagnostic({
+        provider: 'cashfree',
+        scope: 'webhook',
+        stage: outcome,
+        request: buildPaymentRequestContext(req),
+        body: { type, orderId },
+    });
+
+    // 200 for anything signed, so Cashfree stops retrying events we skip.
+    return res.json({ success: true, outcome });
 });
 
 export const acknowledgePhonePeCallback = asyncHandler(async (req, res) => {

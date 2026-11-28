@@ -10,11 +10,12 @@ import bikeIcon from '../../../../assets/icons/bike.png';
 import autoIcon from '../../../../assets/icons/auto.png';
 import deliveryIcon from '../../../../assets/icons/Delivery.png';
 import { useSettings } from '../../../../shared/context/SettingsContext';
+import { openCashfreeCheckout } from '../../../../shared/utils/cashfreeCheckout';
 
 const TIP_OPTIONS = [0, 20, 50, 100];
 const PAYMENT_OPTIONS = [
   { id: 'cash', label: 'COD / Cash', sub: 'Pay driver directly', Icon: Banknote },
-  { id: 'online', label: 'Online', sub: 'UPI, cards or Razorpay', Icon: CreditCard },
+  { id: 'online', label: 'Online', sub: 'UPI, cards or netbanking', Icon: CreditCard },
   { id: 'wallet', label: 'Wallet', sub: 'Use in-app wallet balance', Icon: Wallet },
 ];
 const ONLINE_PAYMENT_OPTIONS = [
@@ -329,7 +330,26 @@ const RideComplete = () => {
 
       let response;
 
-      if (Number(payableNow || 0) > 0 && selectedPaymentMethod === 'online') {
+      if (Number(payableNow || 0) > 0 && selectedPaymentMethod === 'online' && settings.paymentGateway?.slug === 'cashfree') {
+        const orderResponse = await api.post(`/rides/${rideId}/complete-payment/cashfree/order`, {
+          rating,
+          comment,
+          tipAmount: selectedTip || 0,
+        });
+        const order = orderResponse?.data || orderResponse || {};
+        const { closedWithError } = await openCashfreeCheckout(order);
+
+        try {
+          response = await api.post(`/rides/${rideId}/complete-payment/cashfree/verify`, {
+            order_id: order.orderId,
+            rating,
+            comment,
+            tipAmount: selectedTip || 0,
+          });
+        } catch (verifyError) {
+          throw new Error(closedWithError || verifyError?.message || 'Ride payment was not completed');
+        }
+      } else if (Number(payableNow || 0) > 0 && selectedPaymentMethod === 'online') {
         const scriptLoaded = await loadRazorpayScript();
         if (!scriptLoaded) {
           throw new Error('Razorpay SDK failed to load');

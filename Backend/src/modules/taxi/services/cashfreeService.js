@@ -1,10 +1,18 @@
 import { ApiError } from '../../../utils/ApiError.js';
+import { env } from '../../../config/env.js';
 import { resolveConfiguredGatewayCredentials } from './paymentGatewayService.js';
 
 // Cashfree PG ("next gen") REST API. Order create returns a payment_session_id
 // the client SDK opens checkout with; the order is verified server-side by its
 // status afterwards — same order -> pay -> verify shape as the Razorpay flow.
 const CASHFREE_API_VERSION = '2023-08-01';
+
+// Where Cashfree posts payment events for an order. Cashfree only accepts
+// https, so nothing is sent while the backend has no public https origin.
+const resolveCashfreeNotifyUrl = () => {
+  const origin = String(env.paymentCallbackOrigin || env.publicBackendUrl || '').trim().replace(/\/+$/, '');
+  return origin.startsWith('https://') ? `${origin}/api/v1/common/payment-gateway/cashfree/webhook` : '';
+};
 
 const getCashfreeBaseUrl = (isProduction) =>
   isProduction ? 'https://api.cashfree.com/pg' : 'https://sandbox.cashfree.com/pg';
@@ -73,6 +81,7 @@ export const createCashfreeOrder = async ({ amount, orderId, customer = {}, retu
       },
       order_meta: {
         ...(returnUrl ? { return_url: `${returnUrl}?order_id={order_id}` } : {}),
+        ...(resolveCashfreeNotifyUrl() ? { notify_url: resolveCashfreeNotifyUrl() } : {}),
       },
       // order_tags bind the order to its ride/user so verify can confirm the
       // payment is for the right thing (mirrors Razorpay's order notes). Values

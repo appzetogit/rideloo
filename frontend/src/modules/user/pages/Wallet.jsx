@@ -7,6 +7,7 @@ import { useSettings } from '../../../shared/context/SettingsContext';
 import { useUserTheme } from '../../../shared/context/UserThemeContext';
 import { openExternalCheckout } from '../../../shared/utils/externalNavigation';
 import { rememberPendingPhonePeRedirect } from '../../../shared/utils/phonePeResume';
+import { openCashfreeCheckout } from '../../../shared/utils/cashfreeCheckout';
 
 const PHONEPE_USER_WALLET_FLOW_KEY = 'user-wallet-topup';
 
@@ -47,7 +48,7 @@ const Wallet = () => {
   const walletTopUpGatewayLabel = activePaymentGateway?.label || 'payment gateway';
   const supportsWalletTopUp = activePaymentGateway?.supportsWalletTopUp === true;
   const walletTopUpMode = activePaymentGateway?.walletTopUpMode || '';
-  const canTopUpWallet = supportsWalletTopUp && ['razorpay_checkout', 'phonepe_redirect'].includes(walletTopUpMode);
+  const canTopUpWallet = supportsWalletTopUp && ['razorpay_checkout', 'phonepe_redirect', 'cashfree_checkout'].includes(walletTopUpMode);
 
   const refreshWallet = async () => {
     setWalletError('');
@@ -127,6 +128,35 @@ const Wallet = () => {
           throw new Error('PhonePe checkout could not open outside the app WebView. Please update the app bridge or open this payment flow in your browser.');
         }
         setIsAdding(false);
+        return;
+      }
+
+      if (walletTopUpMode === 'cashfree_checkout') {
+        const orderResponse = await userAuthService.createCashfreeWalletTopupOrder(amountValue);
+        const order = orderResponse?.data || {};
+        const { closedWithError } = await openCashfreeCheckout(order);
+
+        // Verify even if the checkout reported a problem: the server's check of
+        // the order is what counts, and it credits the wallet only once.
+        try {
+          const verifyResponse = await userAuthService.verifyCashfreeWalletTopup(order.orderId);
+          const data = verifyResponse?.data || {};
+          setWallet({
+            balance: Number(data.balance || 0),
+            currency: data.currency || 'INR',
+            recentTransactions: Array.isArray(data.recentTransactions) ? data.recentTransactions : [],
+          });
+          setIsSuccess(true);
+          setTimeout(() => {
+            setIsSuccess(false);
+            setShowAddMoney(false);
+            setAmount('');
+          }, 1400);
+        } catch (verifyError) {
+          setWalletError(closedWithError || verifyError?.message || 'Payment was not completed');
+        } finally {
+          setIsAdding(false);
+        }
         return;
       }
 

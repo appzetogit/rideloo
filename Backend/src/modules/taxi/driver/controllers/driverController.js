@@ -59,6 +59,12 @@ import { verifyAccessToken } from "../../services/tokenService.js";
 import { clearDriverActiveRideIfStale } from "../../services/rideService.js";
 import { getWalletSettings } from "../../services/appSettingsService.js";
 import { createCashfreeOrder, verifyCashfreeOrder } from "../../services/cashfreeService.js";
+import {
+  CASHFREE_DRIVER_WALLET_SOURCE,
+  buildDriverWalletOrderId,
+  loadDriverWalletForResponse,
+  settleCashfreeWalletOrder,
+} from "../../services/cashfreeSettlementService.js";
 import { RIDE_LIVE_STATUS, RIDE_STATUS } from "../../constants/index.js";
 import {
   createRentalVehicleType,
@@ -7273,13 +7279,14 @@ export const createDriverCashfreeWalletTopupOrder = async (req, res) => {
 
   const driverId = String(req.auth?.sub || "");
   const driver = await Driver.findById(driverId).select("name phone");
-  const compactDriverId = driverId.replace(/[^a-zA-Z0-9]/g, "").slice(-8) || "drv";
-  const orderId = `dwalcf_${compactDriverId}_${Date.now().toString(36)}`;
+  const orderId = buildDriverWalletOrderId(driverId);
 
   const order = await createCashfreeOrder({
     amount,
     orderId,
     customer: { id: driverId, name: driver?.name, phone: driver?.phone },
+    // Binds the order to this driver: verify and the webhook credit only them.
+    tags: { source: CASHFREE_DRIVER_WALLET_SOURCE, driverId },
   });
 
   res.json({
@@ -7300,31 +7307,21 @@ export const verifyDriverCashfreeWalletTopup = async (req, res) => {
   if (!orderId) {
     throw new ApiError(400, "order_id is required");
   }
-  const driverId = req.auth?.sub;
+  const driverId = String(req.auth?.sub || "");
 
-  const verification = await verifyCashfreeOrder({ orderId });
-  if (!verification.isPaid) {
-    throw new ApiError(400, `Payment not completed (status: ${verification.status || "UNKNOWN"})`);
+  // Credits once per Cashfree order, even if the app verifies twice or the
+  // webhook got there first.
+  const settlement = await settleCashfreeWalletOrder({
+    orderId,
+    claimant: { role: "driver", id: driverId },
+  });
+  if (!settlement.paid) {
+    throw new ApiError(400, `Payment not completed (status: ${settlement.status || "UNKNOWN"})`);
   }
 
-  // Credit once per Cashfree order, even if the app verifies twice.
-  const alreadyCredited = await WalletTransaction.findOne({
-    driverId,
-    "metadata.providerOrderId": orderId,
-  })
-    .select("_id")
-    .lean();
-
-  let result = null;
-  if (!alreadyCredited) {
-    result = await topUpDriverWallet({
-      driverId,
-      amount: verification.amount,
-      metadata: { source: "cashfree", provider: "cashfree", providerOrderId: orderId },
-    });
-  }
-
-  const wallet = result?.wallet || (await serializeDriverWallet(await Driver.findById(driverId)));
+  const result = settlement.driverResult;
+  const alreadyCredited = !settlement.credited;
+  const wallet = result?.wallet || (await loadDriverWalletForResponse(driverId));
 
   res.json({
     success: true,

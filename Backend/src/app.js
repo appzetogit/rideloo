@@ -17,7 +17,15 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
-  app.use(express.json({ limit: '25mb' }));
+  app.use(express.json({
+    limit: '25mb',
+    // Cashfree signs the exact bytes it sent; keep them for that one route.
+    verify: (req, _res, buf) => {
+      if (req.originalUrl?.includes('/payment-gateway/cashfree/webhook')) {
+        req.rawBody = buf.toString('utf8');
+      }
+    },
+  }));
   app.use(express.urlencoded({ extended: true })); 
   app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 
