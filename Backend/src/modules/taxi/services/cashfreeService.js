@@ -1,6 +1,15 @@
 import { ApiError } from '../../../utils/ApiError.js';
 import { env } from '../../../config/env.js';
+import mongoose from 'mongoose';
 import { resolveConfiguredGatewayCredentials } from './paymentGatewayService.js';
+import { CashfreePaymentOrder } from '../admin/models/CashfreePaymentOrder.js';
+
+const toObjectIdOrNull = (value) =>
+  mongoose.Types.ObjectId.isValid(String(value || '')) ? new mongoose.Types.ObjectId(String(value)) : null;
+
+// The order ledger is best-effort: a payment never fails because of it.
+const recordOrder = (filter, update) =>
+  CashfreePaymentOrder.updateOne(filter, update, { upsert: true }).catch(() => null);
 
 // Cashfree PG ("next gen") REST API. Order create returns a payment_session_id
 // the client SDK opens checkout with; the order is verified server-side by its
@@ -96,6 +105,23 @@ export const createCashfreeOrder = async ({ amount, orderId, customer = {}, retu
     },
   });
 
+  const recordedTags = tags && typeof tags === 'object' ? tags : {};
+  await recordOrder(
+    { orderId: payload?.order_id || String(orderId) },
+    {
+      $setOnInsert: {
+        purpose: String(recordedTags.source || ''),
+        userId: toObjectIdOrNull(recordedTags.userId),
+        driverId: toObjectIdOrNull(recordedTags.driverId),
+        rideId: toObjectIdOrNull(recordedTags.rideId),
+        bookingReference: String(recordedTags.bookingReference || ''),
+        amount: amountRupees,
+        isProduction,
+      },
+      $set: { status: String(payload?.order_status || 'active').toLowerCase() },
+    },
+  );
+
   return {
     orderId: payload?.order_id || String(orderId),
     paymentSessionId: payload?.payment_session_id || '',
@@ -124,6 +150,27 @@ export const verifyCashfreeOrder = async ({ orderId }) => {
   });
 
   const status = String(payload?.order_status || '').toUpperCase();
+  if (status) {
+    await recordOrder(
+      { orderId: payload?.order_id || String(orderId) },
+      {
+        $set: { status: status.toLowerCase() },
+        $setOnInsert: {
+          purpose: String(payload?.order_tags?.source || ''),
+          userId: toObjectIdOrNull(payload?.order_tags?.userId),
+          amount: Number(payload?.order_amount || 0),
+          isProduction,
+        },
+      },
+    );
+    if (status === 'PAID') {
+      // First time it is seen paid; later checks leave the time alone.
+      await CashfreePaymentOrder.updateOne(
+        { orderId: payload?.order_id || String(orderId), paidAt: null },
+        { $set: { paidAt: new Date() } },
+      ).catch(() => null);
+    }
+  }
   return {
     orderId: payload?.order_id || String(orderId),
     status,

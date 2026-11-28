@@ -2861,33 +2861,43 @@ export const payRentalAdvanceWithWallet = async (req, res) => {
   }
 
   const referenceKey = `rental_advance_${bookingReference}`;
-  const existingTransaction = Array.isArray(wallet.transactions)
-    ? wallet.transactions.find(
-        (item) => item?.kind === 'debit' && String(item.referenceKey || '') === referenceKey,
-      )
-    : null;
 
-  if (!existingTransaction) {
-    if (Number(wallet.balance || 0) < amount) {
+  // One atomic update: the balance check, the debit and the "already paid for
+  // this booking?" check happen together, so two requests at once cannot both
+  // spend the same balance (read-modify-save could).
+  const debit = await UserWallet.updateOne(
+    {
+      userId,
+      balance: { $gte: amount },
+      'transactions.referenceKey': { $ne: referenceKey },
+    },
+    {
+      $inc: { balance: -amount },
+      $push: {
+        transactions: {
+          $each: [{
+            kind: 'debit',
+            amount,
+            title: 'Rental Advance Payment',
+            provider: 'wallet',
+            providerPaymentId: bookingReference,
+            referenceKey,
+          }],
+          $slice: -50,
+        },
+      },
+    },
+  );
+
+  if (debit.modifiedCount === 0) {
+    const alreadyPaid = await UserWallet.exists({ userId, 'transactions.referenceKey': referenceKey });
+    if (!alreadyPaid) {
       throw new ApiError(400, 'Insufficient wallet balance');
     }
-
-    wallet.balance = Math.round((Number(wallet.balance || 0) - amount) * 100) / 100;
-    wallet.transactions.push({
-      kind: 'debit',
-      amount,
-      title: 'Rental Advance Payment',
-      provider: 'wallet',
-      providerPaymentId: bookingReference,
-      referenceKey,
-    });
-
-    if (wallet.transactions.length > 50) {
-      wallet.transactions = wallet.transactions.slice(-50);
-    }
-
-    await wallet.save();
   }
+
+  const updatedWallet = await UserWallet.findOne({ userId }).select('balance').lean();
+  wallet.balance = Math.round(Number(updatedWallet?.balance || 0) * 100) / 100;
 
   res.status(201).json({
     success: true,

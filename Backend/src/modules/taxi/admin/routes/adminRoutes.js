@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../../middlewares/authMiddleware.js';
+import { getUnmatchedCashfreeRentalAdvances } from '../controllers/cashfreeReconciliationController.js';
 import {
   loginRateLimit,
   otpSendRateLimit,
@@ -527,6 +528,8 @@ adminRouter.patch('/admin/notification-channels/:id/mail', toggleChannelMail);
 
 adminRouter.get('/admin/integration-settings/payment-gateways', getPaymentGateways);
 adminRouter.get('/admin/integration-settings/payment-settings', getPaymentSettings);
+// Rental advances paid through Cashfree that no booking uses.
+adminRouter.get('/admin/payments/cashfree/unmatched-rental-advances', getUnmatchedCashfreeRentalAdvances);
 adminRouter.patch('/admin/integration-settings/payment-settings', updatePaymentSettings);
 
 adminRouter.get('/admin/payment-methods', authenticate(['admin']), getPaymentMethods);

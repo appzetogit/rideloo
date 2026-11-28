@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Download, FileText, Loader2, RefreshCw, Sear
 import toast from 'react-hot-toast';
 import api from '../../../../shared/api/axiosInstance';
 import SubscriberReport from './SubscriberReport';
+import UnmatchedRentalAdvances from './UnmatchedRentalAdvances';
 
 /**
  * Every payment the platform takes, in one place: ride fares (cash, online,
@@ -219,6 +220,7 @@ const Payments = () => {
         {[
           { key: 'all', label: 'All payments' },
           { key: 'subscribers', label: 'Subscribers' },
+          { key: 'unmatched-rental', label: 'Unmatched rental advances' },
         ].map((item) => (
           <button
             key={item.key}
@@ -234,6 +236,8 @@ const Payments = () => {
 
       {tab === 'subscribers' ? (
         <SubscriberReport />
+      ) : tab === 'unmatched-rental' ? (
+        <UnmatchedRentalAdvances />
       ) : (
         <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">

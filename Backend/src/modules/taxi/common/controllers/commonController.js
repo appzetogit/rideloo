@@ -9,6 +9,7 @@ import {
     settleCashfreeWalletOrder,
 } from '../../services/cashfreeSettlementService.js';
 import { settleCashfreeRideOrderFromWebhook } from '../../user/controllers/rideController.js';
+import { verifyCashfreeOrder } from '../../services/cashfreeService.js';
 
 /**
  * Common controller for shared utilities like file uploads
@@ -65,10 +66,13 @@ export const getPaymentGatewayConfig = asyncHandler(async (_req, res) => {
     });
 });
 
-// Cashfree payment webhook (order_meta.notify_url). Credits a wallet top-up
-// even when the app was closed before it could call verify. The payload is
-// only a hint: the order is read back from Cashfree before anything is paid
-// out, and ride payments are left to their own verify calls.
+// Cashfree payment webhook (order_meta.notify_url). Finishes a payment even
+// when the app was closed before it could call verify: wallet top-ups (rider
+// and driver) and ride payments (completion, cash fare paid online, tip). A
+// rental advance cannot finish without its booking details, so its order is
+// only marked paid, which puts it on the admin's unmatched-payments report if
+// no booking ever uses it. The payload is only a hint: every order is read back
+// from Cashfree before anything is paid out.
 export const handleCashfreeWebhook = asyncHandler(async (req, res) => {
     const valid = await isValidCashfreeWebhookSignature({
         rawBody: req.rawBody,
@@ -88,6 +92,13 @@ export const handleCashfreeWebhook = asyncHandler(async (req, res) => {
         try {
             const settlement = await settleCashfreeWalletOrder({ orderId });
             outcome = settlement.credited ? 'credited' : settlement.paid ? 'already_credited' : `status_${settlement.status}`;
+        } catch (error) {
+            outcome = `error: ${error?.message || error}`;
+        }
+    } else if (orderId && /^urntcf_/.test(orderId)) {
+        try {
+            const verification = await verifyCashfreeOrder({ orderId });
+            outcome = verification.isPaid ? 'rental_paid_recorded' : `status_${verification.status}`;
         } catch (error) {
             outcome = `error: ${error?.message || error}`;
         }

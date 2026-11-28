@@ -5,6 +5,7 @@ import { Driver } from '../driver/models/Driver.js';
 import { WalletTransaction } from '../driver/models/WalletTransaction.js';
 import { serializeDriverWallet, topUpDriverWallet } from '../driver/services/walletService.js';
 import { resolveCashfreeCredentials, verifyCashfreeOrder } from './cashfreeService.js';
+import { runRedisCommand } from '../../../infrastructure/redis/redisClient.js';
 
 // Wallet top-ups paid through Cashfree are settled here, from two places:
 // the app's verify call after checkout, and Cashfree's server-to-server
@@ -38,19 +39,61 @@ const isLegacyOrderOf = (orderId, role, id) => {
   return String(orderId).startsWith(`${prefix}${compactId(id, role === 'user' ? 'usr' : 'drv')}_`);
 };
 
-// One settle per order at a time inside this process, so a verify call and the
-// webhook arriving together cannot both pass the "already credited?" check.
+// One settle per order at a time, so a verify call and the webhook arriving
+// together cannot both pass the "already credited?" check. Inside this process
+// a promise chain does it; across processes (more than one backend instance) a
+// Redis lock does. If Redis is unreachable only the in-process lock applies.
 const inFlight = new Map();
+const LOCK_TTL_MS = 30000;
+const LOCK_WAIT_MS = 20000;
+const RELEASE_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+
+const acquireRedisLock = async (key, token) => {
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
+    const result = await runRedisCommand(
+      (client) => client.set(key, token, { NX: true, PX: LOCK_TTL_MS }),
+      { label: 'cashfree order lock' },
+    );
+    if (!result.ok) {
+      return false; // Redis unavailable: carry on with the in-process lock only.
+    }
+    if (result.value === 'OK') {
+      return true;
+    }
+    if (Date.now() > deadline) {
+      throw new ApiError(409, 'This payment is being processed. Please try again in a moment.');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+};
+
 export const withOrderLock = async (orderId, task) => {
   while (inFlight.has(orderId)) {
     await inFlight.get(orderId).catch(() => {});
   }
-  const run = task();
+  const run = (async () => {
+    const key = `lock:cashfree:order:${orderId}`;
+    const token = crypto.randomBytes(12).toString('hex');
+    const locked = orderId ? await acquireRedisLock(key, token) : false;
+    try {
+      return await task();
+    } finally {
+      if (locked) {
+        await runRedisCommand(
+          (client) => client.eval(RELEASE_SCRIPT, { keys: [key], arguments: [token] }),
+          { label: 'cashfree order unlock' },
+        );
+      }
+    }
+  })();
   inFlight.set(orderId, run);
   try {
     return await run;
   } finally {
-    inFlight.delete(orderId);
+    if (inFlight.get(orderId) === run) {
+      inFlight.delete(orderId);
+    }
   }
 };
 
