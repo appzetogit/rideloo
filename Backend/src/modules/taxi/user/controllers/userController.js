@@ -22,7 +22,7 @@ import {
   startUserOtp,
   verifyUserOtp,
 } from '../services/userOtpService.js';
-import { assignPushTokenToEntity } from '../../services/pushTokenService.js';
+import { assignPushTokenToEntity, releasePushTokenFromOthers } from '../../services/pushTokenService.js';
 import { BusSeatHold } from '../models/BusSeatHold.js';
 import { BusBooking } from '../models/BusBooking.js';
 import { RentalBookingRequest } from '../../admin/models/RentalBookingRequest.js';
@@ -1906,6 +1906,8 @@ export const saveUserFcmToken = async (req, res) => {
   });
 
   await user.save();
+  // The same phone may have been logged in as someone else before.
+  await releasePushTokenFromOthers(saved.token, user);
 
   res.json({
     success: true,
@@ -2420,7 +2422,9 @@ export const createRazorpayWalletTopupOrder = async (req, res) => {
   const receipt = `uwal_${compactUserId}_${Date.now().toString(36)}`;
   const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
   const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:5000';
-  const backendOrigin = `${proto}://${host}`;
+  // The approved domain when configured: Razorpay refuses callbacks on hosts
+  // the merchant account does not list.
+  const backendOrigin = env.paymentCallbackOrigin || `${proto}://${host}`;
   const callbackUrl = `${backendOrigin}/api/v1/users/wallet/razorpay/callback`;
 
   const order = await razorpayRequest({

@@ -835,6 +835,9 @@ const emitRideRequestToDrivers = async ({
       data: {
         type: 'ride_request',
         rideId: String(ride._id),
+        // Who this offer is for. The app ignores the push when a different
+        // driver is logged in on the phone.
+        driverId: String(driver._id),
         serviceType: ride.serviceType || 'ride',
         userId: String(ride.userId?._id || ride.userId || ''),
         // Everything below is what the native card renders. It has to be

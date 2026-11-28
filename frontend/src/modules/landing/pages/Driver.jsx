@@ -12,7 +12,7 @@ const Driver = () => {
   const { submitted, sending, error, submit } = useEnquiryForm('driver');
   const [driverName, setDriverName] = useState('');
   const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('Bengaluru');
+  const [city, setCity] = useState('Bhilwara');
   const [experience, setExperience] = useState('3-5 Years');
 
   const handleSubmit = (e) => {
@@ -118,9 +118,7 @@ const Driver = () => {
                 <div className="input-group">
                   <label>Current Operating City</label>
                   <select value={city} onChange={(e) => setCity(e.target.value)}>
-                    <option value="Bengaluru">Bengaluru</option>
-                    <option value="Mangaluru">Mangaluru</option>
-                    <option value="Hubballi">Hubballi</option>
+                    <option value="Bhilwara">Bhilwara</option>
                   </select>
                 </div>
 

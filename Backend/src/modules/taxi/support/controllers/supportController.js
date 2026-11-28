@@ -173,7 +173,14 @@ export const createSupportTicket = async (req, res) => {
   }
 
   let titleDoc = null;
-  if (titleId) {
+  // An app's own category key ("vehicle", "other") is not a title row. With a
+  // title alongside it, file the ticket under that title rather than failing
+  // the lookup.
+  const titleIdIsRowId = /^[0-9a-f]{24}$/i.test(titleId);
+  if (titleId && !titleIdIsRowId && !customTitle) {
+    throw new ApiError(400, 'Support ticket title is invalid');
+  }
+  if (titleId && titleIdIsRowId) {
     titleDoc = await SupportTicketTitle.findOne({ _id: titleId, active: true });
     if (!titleDoc) {
       throw new ApiError(404, 'Support ticket title not found');

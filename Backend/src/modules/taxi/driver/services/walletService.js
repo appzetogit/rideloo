@@ -140,9 +140,11 @@ const isEnabledSetting = (value, fallback = true) => {
 const resolveWalletRules = async () => {
   const walletSettings = await getWalletSettings();
   const configuredMinimumBalance = Number(walletSettings.driver_wallet_minimum_amount_to_get_an_order);
+  // Only the admin's Wallet Settings value applies. An unset or unreadable
+  // value means no minimum, not a limit the admin cannot see.
   const minimumBalanceForOrders = Number.isFinite(configuredMinimumBalance)
     ? Math.round(configuredMinimumBalance * 100) / 100
-    : -toNonNegativeNumber(env.driverWallet.defaultCashLimit, 500);
+    : 0;
 
   return {
     minimumBalanceForOrders,
@@ -216,7 +218,11 @@ export const ensureDriverWalletCanAcceptRide = async (driverOrId, { session } = 
     : null;
   const balanceWaived = Boolean(subscription);
 
-  const isBlocked = wallet.isBlocked || !wallet.rules.isWalletEnabled || (isBelowMinimumBalance && !balanceWaived);
+  // Decided from the rules as they stand now. The stored wallet.isBlocked is
+  // only a cache of this same calculation; trusting it here made a block
+  // permanent - a driver blocked while the minimum was higher stayed blocked
+  // after the admin lowered it, because this check re-saved the old flag.
+  const isBlocked = !wallet.rules.isWalletEnabled || (isBelowMinimumBalance && !balanceWaived);
 
   if (isBlocked) {
     await Driver.findByIdAndUpdate(driver._id, {

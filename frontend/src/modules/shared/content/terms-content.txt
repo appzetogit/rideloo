@@ -1,16 +1,15 @@
 TERMS AND CONDITIONS
 Last updated: 22 September 2026
 
-These Terms and Conditions ("Terms") govern your use of the Rideloo rider app, the Rideloo driver app and our website at https://app.rideloo.com (together, the "Rideloo Platform"), operated by ZI CAB Technologies Pvt Ltd ("Rideloo", "we", "us" or "our").
+These Terms and Conditions ("Terms") govern your use of the Rideloo rider app, the Rideloo driver app and our website at https://app.rideloo.com (together, the "Rideloo Platform"), operated by Rideloo ("Rideloo", "we", "us" or "our").
 
 This document is an electronic record under the Information Technology Act, 2000 and the rules made under it, and does not require a physical or digital signature. By creating an account or using the Rideloo Platform, you agree to these Terms and to our Privacy Policy at https://app.rideloo.com/privacy. If you do not agree, please do not use the Rideloo Platform.
 
 A. About Rideloo
-ZI CAB Technologies Pvt Ltd
-Founder & CEO: Shamsher Mohammed
-Office No 13, Grand Majestic Mall, Gandhinagar, Bengaluru - 560009, Karnataka, India
-Phone / WhatsApp: +91 8904343123
-Email: zicabofficial@gmail.com
+Rideloo
+Founder & CEO: Pankaj Agrawal
+Phone / WhatsApp: +91 9926890510
+Email: ridelooofficial@gmail.com
 
 B. What Rideloo Does
 Rideloo is a technology platform that connects riders who need transport or parcel delivery with independent drivers and vehicle owners who provide those services. Services on the Rideloo Platform may include city rides by bike, auto, cab and other vehicle types, outstation and rental trips, and parcel delivery, depending on your city.
@@ -86,7 +85,7 @@ Riders and drivers can rate each other after each trip. Ratings help keep the Ri
 
 N. Safety
 The apps include safety features such as live trip tracking, ride OTP, driver and vehicle details, and an SOS option. In an emergency, always call 112 first.
-If you feel unsafe or face any incident during a trip, report it to Rideloo immediately on +91 8904343123 or zicabofficial@gmail.com. We will investigate and may share information with the police where required by law.
+If you feel unsafe or face any incident during a trip, report it to Rideloo immediately on +91 9926890510 or ridelooofficial@gmail.com. We will investigate and may share information with the police where required by law.
 
 O. Lost Items
 Rideloo is not responsible for items left in a vehicle. If you lose something, contact support with the trip details and we will try to put you in touch with the driver to arrange its return. A return delivery charge may apply.
@@ -105,19 +104,18 @@ R. Indemnity
 You agree to indemnify Rideloo against any claims, losses or penalties arising from your breach of these Terms, your violation of any law, or your misuse of the Rideloo Platform.
 
 S. Intellectual Property
-The Rideloo name, logo, apps, website and their content belong to ZI CAB Technologies Pvt Ltd. You may use them only to access the Rideloo Platform for its intended purpose, and may not copy, modify, reverse engineer or resell them.
+The Rideloo name, logo, apps, website and their content belong to Rideloo. You may use them only to access the Rideloo Platform for its intended purpose, and may not copy, modify, reverse engineer or resell them.
 
 T. Changes to the Service and These Terms
 We may change, add or remove features, prices and services from time to time. We may also update these Terms. The latest version will always be available at https://app.rideloo.com/terms with the date it was last updated. If we make important changes we will notify you in the app, by SMS or by email. Continuing to use the Rideloo Platform after the changes take effect means you accept them.
 
 U. Governing Law and Disputes
-These Terms are governed by the laws of India. Any dispute will first be attempted to be resolved amicably through our grievance process below. If it cannot be resolved, the courts at Bengaluru, Karnataka will have exclusive jurisdiction, subject to your rights under consumer protection law.
+These Terms are governed by the laws of India. Any dispute will first be attempted to be resolved amicably through our grievance process below. If it cannot be resolved, the courts at Bhilwara, Rajasthan will have exclusive jurisdiction, subject to your rights under consumer protection law.
 
 V. Grievance Officer and Contact
 For any question, complaint or grievance about these Terms or the Rideloo Platform, please contact:
-Shamsher Mohammed, Founder & CEO
-ZI CAB Technologies Pvt Ltd
-Office No 13, Grand Majestic Mall, Gandhinagar, Bengaluru - 560009, Karnataka, India
-Phone / WhatsApp: +91 8904343123
-Email: zicabofficial@gmail.com
+Pankaj Agrawal, Founder & CEO
+Rideloo
+Phone / WhatsApp: +91 9926890510
+Email: ridelooofficial@gmail.com
 We aim to acknowledge complaints within 48 hours and resolve them within 30 days.

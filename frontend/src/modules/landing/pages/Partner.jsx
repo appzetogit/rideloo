@@ -17,7 +17,7 @@ const Partner = () => {
 
   const { submitted, sending, error, submit } = useEnquiryForm('partner');
   const [vehicleType, setVehicleType] = useState('Sedan (Dzire/Etios)');
-  const [city, setCity] = useState('Bengaluru');
+  const [city, setCity] = useState('Bhilwara');
   const [ownerName, setOwnerName] = useState('');
   const [mobile, setMobile] = useState('');
 
@@ -115,7 +115,7 @@ const Partner = () => {
                 <div className="input-group">
                   <label>Operating City</label>
                   <select value={city} onChange={(e) => setCity(e.target.value)}>
-                    <option value="Bengaluru">Bengaluru</option>
+                    <option value="Bhilwara">Bhilwara</option>
                     <option value="Mumbai">Mumbai</option>
                     <option value="Delhi NCR">Delhi NCR</option>
                     <option value="Hyderabad">Hyderabad</option>

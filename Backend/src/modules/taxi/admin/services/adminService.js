@@ -2969,7 +2969,7 @@ const normalizeImportVehicleType = (value = '', vehicleRecord = null) => {
     .trim()
     .toLowerCase();
 
-  if (vehicleText.includes('bike') || vehicleText.includes('scooter')) return 'bike';
+  if (vehicleText.includes('bike') || vehicleText.includes('scooter') || vehicleText.includes('scooty')) return 'bike';
   if (vehicleText.includes('auto') || vehicleText.includes('rickshaw')) return 'auto';
   return 'car';
 };
@@ -5457,7 +5457,12 @@ export const updateDriver = async (id, payload, currentAdmin = null) => {
 
   const vehicleTypeValue = payload.vehicle_type ?? payload.vehicleType ?? payload.car_type;
   if (vehicleTypeValue !== undefined) {
-    update.vehicleType = String(vehicleTypeValue || '').trim().toLowerCase() || 'car';
+    // The panel sends the vehicle's name ("cab", "Premium Cab"), but the
+    // schema only allows bike/auto/car. findByIdAndUpdate does not validate,
+    // so the name used to be stored as-is and every later driver.save() - a
+    // profile photo or document upload - then failed validation. Same mapping
+    // createDriver already applies.
+    update.vehicleType = normalizeImportVehicleType(vehicleTypeValue);
   }
 
   const vehicleTypeId =

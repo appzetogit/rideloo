@@ -62,7 +62,7 @@ const AboutUs = ({ openBookingModal }) => {
               Rideloo was founded with a clear mission: to eliminate ride cancellations, surge pricing shocks, and unverified driver risks for travelers in Karnataka.
             </p>
             <p className="body-text">
-              Whether you need an early morning 4 AM airport cab in Bengaluru, an executive sedan for corporate travel, or a family SUV for an outstation weekend trip to Coorg, Rideloo ensures guaranteed on-time pickup with professional drivers.
+              Whether you need an early morning 4 AM airport cab from Bhilwara, an executive sedan for corporate travel, or a family SUV for an outstation weekend trip to Udaipur, Rideloo ensures guaranteed on-time pickup with professional drivers.
             </p>
             
             <div className="mission-list">

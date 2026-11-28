@@ -64,6 +64,11 @@ export const env = {
     process.env.BACKEND_PUBLIC_URL ||
     process.env.BACKEND_URL ||
     '',
+  // Origin used for payment gateway callback URLs. Razorpay only accepts the
+  // domains registered on the merchant account, so this is set to the approved
+  // one even when the request came in through another host (app.rideloo.com).
+  // Empty means "the host the request came in on", as before.
+  paymentCallbackOrigin: String(process.env.PAYMENT_CALLBACK_ORIGIN || '').trim().replace(/\/+$/, ''),
   phonePeRedirectBaseUrl:
     process.env.PHONEPE_REDIRECT_BASE_URL ||
     process.env.PHONEPE_CALLBACK_BASE_URL ||

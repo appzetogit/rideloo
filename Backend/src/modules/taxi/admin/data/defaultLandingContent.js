@@ -34,22 +34,22 @@ export const defaultLandingContent = {
     {
       name: 'Ramesh Kumar', photo: '/drivers/driver-1.jpg', rating: 4.9, trips: '3,200+ trips',
       experience: '8 years experience', vehicle: 'Maruti Suzuki Dzire · KA 01 AB 1234',
-      badge: 'Top Driver', city: 'Bengaluru',
+      badge: 'Top Driver', city: 'Bhilwara',
     },
     {
       name: 'Suresh Naik', photo: '/drivers/driver-2.jpg', rating: 4.8, trips: '2,100+ trips',
       experience: '6 years experience', vehicle: 'Toyota Innova Crysta · KA 19 CD 5678',
-      badge: 'Verified', city: 'Mangaluru',
+      badge: 'Verified', city: 'Bhilwara',
     },
     {
       name: 'Mahesh Patil', photo: '/drivers/driver-3.jpg', rating: 5.0, trips: '1,450+ trips',
       experience: '5 years experience', vehicle: 'Maruti Suzuki Ertiga · KA 25 EF 9012',
-      badge: 'Top Driver', city: 'Hubballi',
+      badge: 'Top Driver', city: 'Bhilwara',
     },
     {
       name: 'Imran Shaikh', photo: '/drivers/driver-4.jpg', rating: 4.9, trips: '2,800+ trips',
       experience: '10 years experience', vehicle: 'Toyota Fortuner · KA 03 GH 3456',
-      badge: 'Verified', city: 'Bengaluru',
+      badge: 'Verified', city: 'Bhilwara',
     },
   ],
 
@@ -59,28 +59,25 @@ export const defaultLandingContent = {
     { name: 'NOVOTEL', subtitle: 'HOTELS & RESORTS' },
     { name: 'HYATT REGENCY', subtitle: '' },
     { name: 'LuLu MALL', subtitle: 'World of Happiness' },
-    { name: 'Kempegowda Int. Airport', subtitle: 'BENGALURU' },
   ],
 
   launchCities: [
-    { name: 'Bengaluru', note: 'Head Office & Launch City' },
-    { name: 'Mangaluru', note: 'Coastal Karnataka Operations' },
-    { name: 'Hubballi', note: 'North Karnataka Operations' },
+    { name: 'Bhilwara', note: 'Head Office & Launch City' },
   ],
 
   contact: {
-    email: 'zicabofficial@gmail.com',
-    whatsapp: '918904343123',
-    whatsappDisplay: '+91 8904343123',
+    email: 'ridelooofficial@gmail.com',
+    whatsapp: '919926890510',
+    whatsappDisplay: '+91 9926890510',
     // No toll-free line yet. Every "call us" link dials this field, so it holds
     // the business number; tollFreeLive stays false, which keeps the toll-free
     // IVR banner on the contact page hidden until a real line exists.
-    tollFree: '+91 8904343123',
+    tollFree: '+91 9926890510',
     tollFreeLive: false,
-    address: 'Office No 13, Grand Majestic Mall, Gandhinagar, Bengaluru - 560009',
-    addressShort: 'Office No 13, Grand Majestic Mall, Gandhinagar, Bengaluru',
+    address: '',
+    addressShort: '',
     mapsUrl:
-      'https://www.google.com/maps/search/?api=1&query=Grand+Majestic+Mall+Gandhinagar+Bengaluru',
+      '',
   },
 
   // Logo, wordmark and app-store links. The store badges were non-clickable
@@ -116,7 +113,7 @@ export const defaultLandingContent = {
 
   footer: {
     description:
-      'Rideloo is a premium cab booking platform providing safe, transparent, and 24x7 verified rides — now live in Bengaluru, Mangaluru and Hubballi.',
+      'Rideloo is a premium cab booking platform providing safe, transparent, and 24x7 verified rides — now live in Bhilwara.',
     servicesHeading: 'Cab Services',
     cabServices: [
       { label: 'City Ride (Local Cabs)' },
@@ -130,20 +127,20 @@ export const defaultLandingContent = {
       { label: 'Verified Drivers' },
       { label: '24x7 Live SOS' },
     ],
-    copyright: '© 2026 ZI CAB Technologies Pvt Ltd. All Rights Reserved.',
+    copyright: '© 2026 Rideloo. All Rights Reserved.',
   },
 
   seo: {
     title: 'Rideloo - Your Ride. Our Priority.',
     description:
-      'Rideloo - city, outstation and airport cabs with verified drivers and 24x7 support. Now live in Bengaluru, Mangaluru and Hubballi.',
+      'Rideloo - city, outstation and airport cabs with verified drivers and 24x7 support. Now live in Bhilwara.',
   },
 
   about: {
     tag: 'About Rideloo',
     title: 'Redefining Premium Cab Services Across Karnataka',
     subtitle:
-      'Built on trust, safety, and reliability. Seamless city, outstation and airport rides — now live in Bengaluru, Mangaluru and Hubballi.',
+      'Built on trust, safety, and reliability. Seamless city, outstation and airport rides — now live in Bhilwara.',
     stats: [
       { label: 'Successful Rides', count: 100000, suffix: '+' },
       { label: 'Customer Rating', value: '4.9 ★' },
@@ -153,7 +150,7 @@ export const defaultLandingContent = {
     foundersTag: 'Leadership',
     foundersHeading: 'Meet the Founder',
     founders: [
-      { name: 'Shamsher Mohammed', role: 'Founder & CEO', photo: '', bio: '', linkedin: '' },
+      { name: 'Pankaj Agrawal', role: 'Founder & CEO', photo: '', bio: '', linkedin: '' },
     ],
     pillarsHeading: 'The Pillars of Rideloo',
     pillars: [

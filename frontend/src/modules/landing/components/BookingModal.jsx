@@ -7,8 +7,8 @@ const BookingModal = ({ isOpen, onClose, selectedVehicle = null }) => {
   const { contact: CONTACT } = useLanding();
   const [step, setStep] = useState(1);
   const [tripType, setTripType] = useState('city');
-  const [pickup, setPickup] = useState('Gandhinagar, Bengaluru');
-  const [drop, setDrop] = useState('Kempegowda Int. Airport (BLR)');
+  const [pickup, setPickup] = useState('');
+  const [drop, setDrop] = useState('');
   const [vehicle, setVehicle] = useState(selectedVehicle || 'Dzire');
   const [date, setDate] = useState('2026-08-06');
   const [passengers, setPassengers] = useState('2');

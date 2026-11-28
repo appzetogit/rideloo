@@ -42,6 +42,7 @@ import {
   deleteDriverEmergencyContact,
   claimDriverIncentiveReward,
   goOffline,
+  logoutDriver,
   goOnline,
   createBusDriverReservation,
   getBusDriverLiveTrip,
@@ -689,3 +690,4 @@ driverRouter.patch(
   authenticate(["driver"]),
   asyncHandler(goOffline),
 );
+driverRouter.post("/logout", authenticate(["driver"]), asyncHandler(logoutDriver));

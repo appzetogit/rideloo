@@ -53,10 +53,12 @@ const Footer = ({ setActiveTab }) => {
                   </a>
                 </span>
               </div>
-              <div className="contact-item">
-                <MapPin size={16} color="#00BBA9" />
-                <span>Office: {CONTACT.address}</span>
-              </div>
+              {CONTACT.address ? (
+                <div className="contact-item">
+                  <MapPin size={16} color="#00BBA9" />
+                  <span>Office: {CONTACT.address}</span>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -142,6 +144,8 @@ const Footer = ({ setActiveTab }) => {
             <a href="/terms">Terms of Service</a>
             <span>•</span>
             <a href="/refund">Refund & Cancellation</a>
+            <span>•</span>
+            <a href="/shipping">Shipping Policy</a>
             <span>•</span>
             {/* Required credit for the Creative Commons vehicle photos.
                 Safe to delete once they are replaced with Rideloo's own fleet photos. */}

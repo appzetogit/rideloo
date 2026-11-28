@@ -37,7 +37,7 @@ const legalContent = {
     title: 'Refund & Cancellation Policy',
     icon: ReceiptText,
     intro:
-      'This page explains refund eligibility, cancellation timelines, and indicative prices for the main vehicle types available on the ZI CAB Technologies Pvt Ltd platform. Refunds are reviewed based on service status, time of cancellation, and payment mode.',
+      'This page explains refund eligibility, cancellation timelines, and indicative prices for the main vehicle types available on the Rideloo platform. Refunds are reviewed based on service status, time of cancellation, and payment mode.',
     sections: [
       {
         title: 'When refunds may be approved',
@@ -51,7 +51,7 @@ const legalContent = {
       {
         title: 'Refund policy overview',
         body:
-          'ZI CAB Technologies Pvt Ltd reviews refund requests on a case-by-case basis to confirm whether the booking was completed, cancelled before service, cancelled after dispatch, or affected by a technical or payment issue. Approved refunds are returned only after internal verification of ride logs, payment status, and service records.',
+          'Rideloo reviews refund requests on a case-by-case basis to confirm whether the booking was completed, cancelled before service, cancelled after dispatch, or affected by a technical or payment issue. Approved refunds are returned only after internal verification of ride logs, payment status, and service records.',
       },
       {
         title: 'Cancellation rules',
@@ -100,7 +100,7 @@ const legalContent = {
         bullets: [
           'Raise the issue through the support team with your booking ID, payment details, and reason for the request.',
           'Submit the request as early as possible after the cancelled or affected booking.',
-          'ZI CAB Technologies Pvt Ltd may ask for screenshots, transaction references, or additional verification before approval.',
+          'Rideloo may ask for screenshots, transaction references, or additional verification before approval.',
         ],
       },
       {
@@ -119,7 +119,7 @@ const legalContent = {
     title: 'Cancellation Policy',
     icon: Scale,
     intro:
-      'This page summarizes how cancellations are handled across ZI CAB Technologies Pvt Ltd booking categories.',
+      'This page summarizes how cancellations are handled across Rideloo booking categories.',
     sections: [
       {
         title: 'General policy',
@@ -131,6 +131,56 @@ const legalContent = {
       },
     ],
   },
+  shipping: {
+    label: 'Shipping Policy',
+    title: 'Shipping & Service Delivery Policy',
+    icon: FileText,
+    intro:
+      'Rideloo is a ride-hailing and parcel delivery platform. We do not sell or ship physical products. This page explains how our services are delivered after you book and pay.',
+    sections: [
+      {
+        title: 'What we deliver',
+        bullets: [
+          'Rides: transport from your pickup point to your drop point by a verified driver-partner (bike, auto, cab and other listed vehicle types).',
+          'Parcels: pickup of your parcel from the sender and delivery to the receiver within the city or on supported outstation routes.',
+          'Wallet top-ups and subscriptions: credited to your Rideloo account digitally. Nothing is shipped.',
+        ],
+      },
+      {
+        title: 'How and when the service is delivered',
+        bullets: [
+          'After you confirm a booking, the app assigns a nearby driver-partner, usually within a few minutes, and shows their name, vehicle and live location.',
+          'Rides start when the driver reaches your pickup point and end at your drop point. The estimated time is shown in the app before you book.',
+          'Parcels are collected at pickup and delivered to the receiver on the same trip. Within the city this is usually the same day, within a few hours of pickup, depending on distance and traffic.',
+          'Scheduled bookings are delivered at the date and time you choose.',
+          'Wallet top-ups are credited immediately after a successful payment, or within 24 hours if the bank confirms the payment late.',
+        ],
+      },
+      {
+        title: 'Service area',
+        body:
+          'Services are currently available in Bhilwara, Rajasthan, and on outstation routes shown in the app. A booking can only be made for a pickup inside an active service area.',
+      },
+      {
+        title: 'Charges',
+        body:
+          'There is no separate shipping or handling charge. The fare shown before you confirm a booking covers the ride or parcel delivery. Waiting time, tolls or parking, where applicable, are shown in your trip bill.',
+      },
+      {
+        title: 'If a service could not be delivered',
+        bullets: [
+          'If no driver-partner is found, the booking is cancelled automatically and you are not charged.',
+          'If a paid ride or parcel delivery could not be completed through no fault of yours, contact us and the amount will be refunded as described in our Refund & Cancellation Policy.',
+          'For a damaged or undelivered parcel, report it within 24 hours of the trip with your trip details.',
+        ],
+      },
+      {
+        title: 'Contact',
+        body:
+          'Email ridelooofficial@gmail.com or call / WhatsApp +91 9926890510 for any question about a booking or delivery.',
+      },
+    ],
+  },
 };
 
 const getDocumentType = (pathname = '') => {
@@ -139,6 +189,7 @@ const getDocumentType = (pathname = '') => {
   if (value.includes('terms-and-conditions') || value.includes('terms')) return 'terms';
   if (value.includes('refund')) return 'refund';
   if (value.includes('cancellation')) return 'cancellation';
+  if (value.includes('shipping') || value.includes('delivery-policy')) return 'shipping';
   return 'terms';
 };
 

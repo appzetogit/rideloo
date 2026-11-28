@@ -34,7 +34,7 @@ import {
   hashPassword,
   signAccessToken,
 } from "../services/authService.js";
-import { cancelScheduledRideByDriver, emitToDriver } from "../../services/dispatchService.js";
+import { cancelScheduledRideByDriver, emitToDriver, getDriverRoom, getSocketServer } from "../../services/dispatchService.js";
 import { notifyLateAvailableDriver } from "../../services/dispatchService.js";
 import { findZoneByPickup } from "../services/locationService.js";
 import { listDriverServiceLocations } from "../services/serviceLocationService.js";
@@ -75,7 +75,7 @@ import {
   updateRentalVehicleType,
 } from "../../admin/services/adminService.js";
 import { resolveConfiguredGatewayCredentials } from "../../services/paymentGatewayService.js";
-import { assignPushTokenToEntity } from "../../services/pushTokenService.js";
+import { assignPushTokenToEntity, releasePushTokenFromOthers } from "../../services/pushTokenService.js";
 import {
   completeDriverOnboarding,
   getDriverOnboardingSession,
@@ -3315,6 +3315,8 @@ export const saveDriverFcmToken = async (req, res) => {
   // before the current enum) — only the token field just assigned needs to
   // be valid, not the entire document.
   await entity.save({ validateModifiedOnly: true });
+  // The same phone may have been logged in as someone else before.
+  await releasePushTokenFromOthers(saved.token, entity);
 
   res.json({
     success: true,
@@ -6847,7 +6849,9 @@ export const createDriverWalletTopupOrder = async (req, res) => {
   // Build the callback URL that Razorpay will redirect to after payment.
   const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
   const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:5000';
-  const backendOrigin = `${proto}://${host}`;
+  // The approved domain when configured: Razorpay refuses callbacks on hosts
+  // the merchant account does not list.
+  const backendOrigin = env.paymentCallbackOrigin || `${proto}://${host}`;
   const callbackUrl = `${backendOrigin}/api/v1/drivers/wallet/top-up/razorpay/callback`;
 
   const userAgent = String(req.headers["user-agent"] || "");
@@ -9973,6 +9977,68 @@ export const getOnboardingSession = async (req, res) => {
   res.json({ success: true, data: result });
 };
 
+// The offline update, shared by going offline and logging out: closes the
+// current online session for incentives and today's summary.
+const buildDriverOfflineUpdate = (existingDriver) => {
+  const finalizedTracking = mergeOnlineSessionIntoTracking(
+    existingDriver.incentiveTracking || {},
+    existingDriver.incentiveTracking?.currentOnlineStartedAt,
+    new Date(),
+  );
+
+  return {
+    isOnline: false,
+    socketId: null,
+    incentiveTracking: {
+      ...finalizedTracking,
+      currentOnlineStartedAt: null,
+      claimedRewards: pruneClaimedRewards(finalizedTracking?.claimedRewards),
+    },
+    todaySummary: buildDriverTodaySummaryFromDocument(existingDriver),
+  };
+};
+
+// POST /drivers/logout. The app calls it before wiping its storage. Takes the
+// driver offline, clears the push tokens and drops the driver's live sockets,
+// so a later login on the same phone never gets this driver's ride offers.
+// Body (optional): { token } - the device's FCM token. When given, only a
+// stored token equal to it is cleared, so logging out on one phone does not
+// silence the driver's other phone.
+export const logoutDriver = async (req, res) => {
+  const existingDriver = await Driver.findById(req.auth.sub);
+
+  if (!existingDriver) {
+    throw new ApiError(404, "Driver not found");
+  }
+
+  if (existingDriver.isOnRide) {
+    throw new ApiError(409, "Finish or cancel your current ride before logging out");
+  }
+
+  const update = buildDriverOfflineUpdate(existingDriver);
+  const deviceToken = String(req.body?.token || "").trim();
+
+  ["fcmTokenMobile", "fcmTokenWeb"].forEach((field) => {
+    const stored = String(existingDriver[field] || "").trim();
+    if (stored && (!deviceToken || stored === deviceToken)) {
+      update[field] = "";
+    }
+  });
+
+  await Driver.findByIdAndUpdate(req.auth.sub, update);
+
+  const io = getSocketServer();
+  if (io) {
+    const sockets = await io.in(getDriverRoom(String(existingDriver._id))).fetchSockets();
+    sockets.forEach((socket) => socket.disconnect(true));
+  }
+
+  res.json({
+    success: true,
+    data: { message: "Logged out" },
+  });
+};
+
 export const goOffline = async (req, res) => {
   const existingDriver = await Driver.findById(req.auth.sub);
 
@@ -9980,25 +10046,9 @@ export const goOffline = async (req, res) => {
     throw new ApiError(404, "Driver not found");
   }
 
-  const finalizedTracking = mergeOnlineSessionIntoTracking(
-    existingDriver.incentiveTracking || {},
-    existingDriver.incentiveTracking?.currentOnlineStartedAt,
-    new Date(),
-  );
-  const finalizedTodaySummary = buildDriverTodaySummaryFromDocument(existingDriver);
-
   const driver = await Driver.findByIdAndUpdate(
     req.auth.sub,
-    {
-      isOnline: false,
-      socketId: null,
-      incentiveTracking: {
-        ...finalizedTracking,
-        currentOnlineStartedAt: null,
-        claimedRewards: pruneClaimedRewards(finalizedTracking?.claimedRewards),
-      },
-      todaySummary: finalizedTodaySummary,
-    },
+    buildDriverOfflineUpdate(existingDriver),
     { returnDocument: 'after' },
   );
 

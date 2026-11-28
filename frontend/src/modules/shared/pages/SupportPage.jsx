@@ -9,9 +9,9 @@ const RIDER_FAQ = [
   { q: 'What is the ride OTP?', a: 'Every trip has a 4-digit OTP shown in your app. Share it with the driver only after you are inside the right vehicle - the trip cannot start without it. Rideloo will never call you to ask for an OTP.' },
   { q: 'Can I raise my fare to find a driver faster?', a: 'Yes. If no driver has accepted, the app lets you add a small amount to your fare. Drivers nearby see the new fare immediately. You always see the final amount before adding it.' },
   { q: 'How do I cancel a ride, and is there a charge?', a: 'Tap Cancel on the trip screen. Cancelling soon after booking is free; a small cancellation fee may apply if the driver has already arrived or waited for you. The fee, if any, is shown before you confirm.' },
-  { q: 'I left something in the vehicle. What should I do?', a: 'Call or WhatsApp +91 8904343123 with your trip date and pickup location. Our team will contact the driver and help arrange its return.' },
+  { q: 'I left something in the vehicle. What should I do?', a: 'Call or WhatsApp +91 9926890510 with your trip date and pickup location. Our team will contact the driver and help arrange its return.' },
   { q: 'How do refunds work?', a: 'If you were charged incorrectly or paid for a trip that did not happen, contact support with the trip details. Approved refunds go back to your original payment method or Rideloo wallet within 5-7 working days.' },
-  { q: 'How do I delete my account?', a: 'Email zicabofficial@gmail.com or call +91 8904343123 from your registered mobile number and ask for account deletion. We complete it within 30 days, as described in our Privacy Policy.' },
+  { q: 'How do I delete my account?', a: 'Email ridelooofficial@gmail.com or call +91 9926890510 from your registered mobile number and ask for account deletion. We complete it within 30 days, as described in our Privacy Policy.' },
 ];
 
 const SupportPage = () => {
@@ -115,7 +115,7 @@ const SupportPage = () => {
 
       <section className="px-6 py-16">
         <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3">
-          {detailCards.map((card) => (
+          {detailCards.filter((card) => card.value).map((card) => (
             <div
               key={card.title}
               className="rounded-[28px] border border-stone-200 bg-white p-7 shadow-sm"

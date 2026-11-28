@@ -25,6 +25,8 @@ import { getTipSettings } from './appSettingsService.js';
 import { getBidRideSettings } from './transportSettingsService.js';
 import { resolveBiddingPolicy } from './biddingPolicyService.js';
 import { resolveRideRoute } from './routeService.js';
+import { assertFareIsPlausible } from './fareGuardService.js';
+import { getActivePriceHikeMultiplier } from './priceHikeService.js';
 
 const clearUserActiveRideIfPresent = async (user) => {
   if (!user?.currentRideId) {
@@ -1093,16 +1095,15 @@ export const createRideRecord = async ({
   bidStepAmount,
   platformFee,
   surgeMultiplier,
+  // True only when the caller priced the trip itself (deliveries). Every other
+  // fare came from an app and is checked against the tariff below.
+  fareFromServer = false,
 }) => {
   const user = await User.findById(userId);
 
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
-
-  await clearUserActiveRideIfPresent(user);
-
-  const riderOtp = await resolveRiderOtp(user);
 
   const safeFare = Number(fare);
   const safeEstimatedDistanceMeters = Math.max(0, Number(estimatedDistanceMeters || 0));
@@ -1392,6 +1393,28 @@ export const createRideRecord = async ({
   const routedDurationMinutes = resolvedRoute?.durationMinutes > 0
     ? resolvedRoute.durationMinutes
     : safeEstimatedDurationMinutes;
+  if (!fareFromServer) {
+    assertFareIsPlausible({
+      fare: safeFare,
+      pricingRule,
+      serviceType: normalizedServiceType,
+      routedDistanceMeters: resolvedRoute?.distanceMeters > 0 ? resolvedRoute.distanceMeters : 0,
+      routedDurationMinutes: resolvedRoute?.durationMinutes > 0 ? resolvedRoute.durationMinutes : 0,
+      pickupCoords,
+      dropCoords,
+      surgeMultiplier: Math.max(rideSurgeMultiplier, Number(surgeMultiplier) || 1),
+      priceHikeMultiplier: await getActivePriceHikeMultiplier().catch(() => 1),
+      airportFee: tripCategory.airport_fee,
+      platformFee: configuredPlatformFee,
+    });
+  }
+
+  // Only once the booking is known to be valid: a refused fare must not cancel
+  // the rider's current trip on its way out.
+  await clearUserActiveRideIfPresent(user);
+
+  const riderOtp = await resolveRiderOtp(user);
+
   const routeDocument = resolvedRoute
     ? {
         polyline: resolvedRoute.polyline,

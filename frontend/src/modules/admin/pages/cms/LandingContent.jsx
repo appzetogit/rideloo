@@ -63,7 +63,7 @@ const SECTIONS = [
       { name: 'experience', label: 'Experience', placeholder: '8 years experience' },
       { name: 'vehicle', label: 'Vehicle', placeholder: 'Maruti Suzuki Dzire · KA 01 AB 1234', wide: true },
       { name: 'badge', label: 'Badge', placeholder: 'Top Driver', help: '"Top Driver" is highlighted.' },
-      { name: 'city', label: 'City', placeholder: 'Bengaluru' },
+      { name: 'city', label: 'City', placeholder: 'Bhilwara' },
     ],
   },
   {
@@ -93,8 +93,8 @@ const CONTACT_FIELDS = [
   { name: 'whatsappDisplay', label: 'WhatsApp (displayed)', placeholder: '+91 98765 00000' },
   { name: 'whatsapp', label: 'WhatsApp (dial format)', placeholder: '919876500000', help: 'Country code, digits only — used to build the wa.me link.' },
   { name: 'email', label: 'Email', placeholder: 'support@rideloo.com' },
-  { name: 'addressShort', label: 'Short Address', placeholder: 'Grand Majestic Mall, Gandhinagar, Bengaluru', wide: true },
-  { name: 'address', label: 'Full Address', placeholder: 'Grand Majestic Mall, Gandhinagar, Bengaluru, Karnataka 560009', wide: true },
+  { name: 'addressShort', label: 'Short Address', placeholder: 'Office address, Bhilwara', wide: true },
+  { name: 'address', label: 'Full Address', placeholder: 'Office address, Bhilwara, Rajasthan 311001', wide: true },
   { name: 'mapsUrl', label: 'Google Maps URL', placeholder: 'https://www.google.com/maps/search/?api=1&query=...', wide: true },
 ];
 
@@ -130,7 +130,7 @@ const SEO_FIELDS = [
 const FOOTER_FIELDS = [
   { name: 'description', label: 'About blurb', placeholder: 'Rideloo is a premium cab booking platform...', wide: true },
   { name: 'servicesHeading', label: 'Services column heading', placeholder: 'Cab Services' },
-  { name: 'copyright', label: 'Copyright line', placeholder: '© 2026 ZI CAB Technologies Pvt Ltd. All Rights Reserved.', wide: true },
+  { name: 'copyright', label: 'Copyright line', placeholder: '© 2026 Rideloo. All Rights Reserved.', wide: true },
 ];
 
 const BRAND_FIELDS = [

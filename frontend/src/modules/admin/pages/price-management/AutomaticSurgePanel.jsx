@@ -8,7 +8,8 @@ import { HAS_VALID_GOOGLE_MAPS_KEY, useBaseGoogleMapsLoader } from '../../utils/
 const inputClass =
   'w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-800 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors shadow-sm';
 const labelClass = 'block text-[10px] font-semibold text-gray-500 mb-1';
-const BENGALURU = { lat: 12.9716, lng: 77.5946 };
+// Default map centre when no surge area is drawn yet.
+const DEFAULT_CENTER = { lat: 25.3463, lng: 74.6364 }; // Bhilwara
 const REFRESH_MS = 60 * 1000;
 const DEFAULT_TAB = 'default';
 
@@ -156,7 +157,7 @@ const AutomaticSurgePanel = () => {
   }, [active, tab, hasOwn, isDefault]);
 
   const mapCenter = useMemo(() => {
-    if (!tabAreas.length) return BENGALURU;
+    if (!tabAreas.length) return DEFAULT_CENTER;
     const lat = tabAreas.reduce((sum, area) => sum + area.center.lat, 0) / tabAreas.length;
     const lng = tabAreas.reduce((sum, area) => sum + area.center.lng, 0) / tabAreas.length;
     return { lat, lng };

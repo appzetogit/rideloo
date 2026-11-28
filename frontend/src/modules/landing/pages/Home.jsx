@@ -469,11 +469,13 @@ const fallbackVehicles = [
             <div>
               <span className="eyebrow"><span className="eyebrow-num">05</span> Coverage</span>
               <h2 className="section-title" data-reveal-mask><span>Where You&apos;ll Find Us</span></h2>
-              <p className="section-sub-dark">{contact.addressShort}</p>
+              {contact.addressShort ? <p className="section-sub-dark">{contact.addressShort}</p> : null}
             </div>
+            {contact.mapsUrl ? (
             <a className="section-link" href={contact.mapsUrl} target="_blank" rel="noreferrer">
               Get Directions <ChevronRight size={16} />
             </a>
+            ) : null}
           </div>
 
           <div className="cities-grid" data-reveal-stagger>

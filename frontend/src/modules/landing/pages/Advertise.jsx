@@ -53,7 +53,7 @@ const Advertise = () => {
           <h1 className="page-title">{advertisePage.title}</h1>
           <p className="page-subtitle">
             Every Rideloo trip is a captive screen moment. Put your brand in front of riders and
-            driver-partners across our app, website and driver network in Bengaluru, Mangaluru and Hubballi.
+            driver-partners across our app, website and driver network in Bhilwara.
           </p>
         </div>
       </div>
@@ -172,7 +172,7 @@ const Advertise = () => {
                     id="ad-company"
                     type="text"
                     required
-                    placeholder="e.g. Grand Majestic Mall"
+                    placeholder="e.g. City Centre Mall"
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                   />

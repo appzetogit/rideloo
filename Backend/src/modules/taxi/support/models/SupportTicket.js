@@ -42,10 +42,13 @@ const supportTicketSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    // Optional: a ticket raised under "Other" or a category the app supplied
+    // itself has no title row. The controller already stores null for those;
+    // requiring it here refused every such ticket.
     titleId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'TaxiSupportTicketTitle',
-      required: true,
+      default: null,
     },
     title: {
       type: String,
